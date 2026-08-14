@@ -5,3 +5,4 @@ lib/
 .npm-cache/
 .idea/
 ref/
+.dsh/

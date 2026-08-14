@@ -29,8 +29,8 @@ export const zh = {
   visionToggle: '启用 inspect_image',
   /** Vision picker label. */
   visionPickerLabel: '视觉模型（需支持图片输入）',
-  /** Exact distinction between inspect_image and chat image attachments. */
-  visionUsage: '此选择只供 inspect_image 读取 Host 上的本地图片；聊天附件仍由当前会话主模型决定。若聊天框提示“当前模型不支持图片”，请切换底部的主模型；要使用这里的视觉模型，请让智能体调用 inspect_image。',
+  /** Exact distinction between route selection and model capabilities. */
+  visionUsage: '此路线供 inspect_image 读取 Host 上的本地图片。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
   /** Compaction feature card heading. */
   compactTitle: '上下文压缩',
   /** Compaction feature card explanation. */
@@ -77,7 +77,7 @@ export const en: Record<AuxiliaryKey, string> = {
   visionDescription: 'Controls the `inspect_image` tool and its vision model. Enabling it without a selected model remains valid; a tool call reports that the vision route is missing.',
   visionToggle: 'Enable inspect_image',
   visionPickerLabel: 'Vision model (must support image input)',
-  visionUsage: 'This route is only for `inspect_image` reading local images on the Host; chat attachments still use the current session’s main model. If the composer says the current model does not support images, switch the main model there; to use this vision route, ask the agent to call `inspect_image`.',
+  visionUsage: 'This route lets inspect_image read local images on the Host. Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
   compactTitle: 'Context compaction',
   compactDescription: 'Controls whether `purpose: compaction` summaries use the independent compact model route.',
   compactToggle: 'Enable auxiliary compaction route',

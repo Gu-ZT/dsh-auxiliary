@@ -87,18 +87,17 @@ The picker presents all currently available models together, grouped by
 provider. A saved route that is temporarily absent from the catalog is kept
 and is never replaced automatically.
 
-The browser catalog exposes provider and model names, not image-input
-capabilities, so choose a model known to accept image input. When the Host
-explicitly reports that the selected route is text-only, `inspect_image`
-rejects it at execution time.
+For a user-configured `llm-pi-ai` model, declare image support under
+**Settings → Models → Provider → Customized settings → Models → Model
+settings**. The **Allow image input** checkbox writes the model's canonical
+`input` declaration (`[text, image]` when checked, `[text]` when cleared), so
+both `inspect_image` and the main chat composer use the same capability fact.
+Enable it only when the upstream endpoint actually accepts images; the
+declaration cannot add vision support to a text-only model.
 
-Selecting an auxiliary vision model does **not** enable the chat attachment
-control: the chat composer still validates images against the current session's
-main model. If it says “the current model does not support images”, switch the
-main model in the chat composer. To use the vision model selected here, put the
-image at a Host-readable workspace-relative or absolute path, then ask the
-agent to run `inspect_image`, for example: `Use inspect_image to analyze
-screenshots/error.png`.
+To use the selected vision route, put the image at a Host-readable
+workspace-relative or absolute path, then ask the agent to run `inspect_image`,
+for example: `Use inspect_image to analyze screenshots/error.png`.
 
 ### Notes
 
