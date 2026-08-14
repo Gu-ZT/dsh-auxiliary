@@ -12,7 +12,9 @@ export const zh = {
   /** Provider select label. */
   providerLabel: '提供商',
   /** Model select label. */
-  modelLabel: '模型',
+  modelLabel: '模型（需支持图片输入）',
+  /** How the selected model is used and how to supply an image. */
+  imageUsage: '此选择仅供 inspect_image 使用，不会启用聊天框图片附件。图片需位于 Host 可读的工作区或绝对路径，并在消息中要求智能体调用 inspect_image。',
   /** Save button. */
   save: '保存',
   /** Saved confirmation. */
@@ -38,7 +40,8 @@ export const en: Record<AuxiliaryKey, string> = {
   nav: 'Auxiliary Models',
   intro: 'Pick the provider and model already configured in Models as the vision model inspect_image uses to read images. This selection only affects inspect_image; compaction summaries use the separate compact provider/model setting.',
   providerLabel: 'Provider',
-  modelLabel: 'Model',
+  modelLabel: 'Model (must support image input)',
+  imageUsage: 'This selection is only for inspect_image and does not enable chat image attachments. Put the image in a Host-readable workspace or use an absolute path, then ask the agent to call inspect_image.',
   save: 'Save',
   saved: 'Saved',
   loading: 'Loading…',

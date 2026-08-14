@@ -31,13 +31,13 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: 16,
   fontWeight: 500,
-  lineHeight: 24,
+  lineHeight: '24px',
 };
 
 const introStyle: CSSProperties = {
   margin: 0,
   fontSize: 14,
-  lineHeight: 22,
+  lineHeight: '22px',
   color: 'var(--dsw-alias-label-tertiary)',
 };
 
@@ -51,7 +51,7 @@ const fieldStyle: CSSProperties = {
 const labelStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
-  lineHeight: 18,
+  lineHeight: '18px',
   color: 'var(--dsw-alias-label-secondary)',
 };
 
@@ -67,7 +67,7 @@ const inputStyle: CSSProperties = {
   borderRadius: 8,
   padding: '0 10px',
   fontSize: 14,
-  lineHeight: 22,
+  lineHeight: '22px',
   cursor: 'pointer',
 };
 
@@ -87,7 +87,7 @@ const saveStyle: CSSProperties = {
   borderRadius: 16,
   padding: '0 14px',
   fontSize: 14,
-  lineHeight: 22,
+  lineHeight: '22px',
   background: 'var(--dsw-alias-button-primary-fill)',
   color: 'var(--dsw-alias-label-primary-foreground)',
 };
@@ -95,14 +95,14 @@ const saveStyle: CSSProperties = {
 const savedStyle: CSSProperties = {
   margin: 0,
   fontSize: 12,
-  lineHeight: 18,
+  lineHeight: '18px',
   color: 'var(--dsw-alias-state-success-primary)',
 };
 
 const errorStyle: CSSProperties = {
   margin: 0,
   fontSize: 12,
-  lineHeight: 18,
+  lineHeight: '18px',
   color: 'var(--dsw-alias-state-error-primary)',
 };
 
@@ -248,6 +248,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
               ))}
             </select>
           </label>
+          <p style={introStyle}>{t('imageUsage')}</p>
           <div style={saveRowStyle}>
             <button
               type="button"

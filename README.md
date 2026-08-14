@@ -87,6 +87,18 @@ that provider's catalog models. Saving writes `vision.provider` and
 uses; compaction summaries keep their own independent `compact.provider` /
 `compact.model` pair.
 
+The browser catalog exposes provider and model names, not image-input
+capabilities, so choose a model known to accept image input. When the Host
+explicitly reports that the selected route is text-only, `inspect_image`
+rejects it at execution time.
+
+Selecting an auxiliary vision model does **not** enable the chat attachment
+control: image attachments are validated against the current session's main
+model before the plugin is involved. Put the image at a Host-readable
+workspace-relative or absolute path, then ask the agent to run
+`inspect_image`, for example: `Use inspect_image to analyze
+screenshots/error.png`.
+
 ### Notes
 
 - `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `deepseek-official` with a cheaper model (placeholders; replace with your actual provider route and model id).

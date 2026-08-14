@@ -80,6 +80,10 @@ npm install dsh-auxiliary
 
 插件自带一个 Web 设置分区（**设置 → 辅助模型**）。先在「模型」页配置好提供商及其模型，再回到这里选择：页面只列出当前已启用、且模型目录中至少提供一个模型的提供商，模型下拉只显示该提供商的目录模型。点击「保存」写入 `vision.provider` 与 `vision.model`——该选择只影响 `inspect_image` 使用的视觉模型；压缩摘要使用的模型由 `compact.provider` / `compact.model` 独立配置，互不影响。
 
+浏览器端模型目录只提供 provider/model 名称，不提供图片输入能力；请自行选择确认支持图片输入的模型。若 Host 明确声明所选路由仅支持文本，`inspect_image` 会在执行时拒绝该调用。
+
+选择辅助视觉模型**不会**启用聊天框的图片附件：插件介入前，附件已按当前会话主模型的图片能力校验。请将图片放在 Host 可读取的工作区相对路径或绝对路径，再让智能体调用 `inspect_image`，例如：`请调用 inspect_image 分析 screenshots/error.png`。
+
 ### 说明
 
 - `compact.enabled` 只改路由 `purpose: 'compaction'` 的调用。`provider`/`model` 可指向任意已注册路由——例如 `deepseek-official` 配一个更便宜的模型（示例值，请替换为你实际配置的提供商路由 id 与模型 id）。
