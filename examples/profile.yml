@@ -14,6 +14,7 @@
       maxTokens: 2048               # 单次 inspect_image 输出上限
 
     tool:
+      # 视觉功能的开关与 compact.enabled 相互独立。
       enabled: true
       maxImageBytes: 10485760
       timeoutMs: 120000
@@ -26,7 +27,7 @@
       provider: deepseek-official        # 已注册的提供商路由 id（示例，请替换）
       model: deepseek-chat               # 该提供商下的模型 id（示例，请替换）
 
-    # 可选：替换默认压缩后端，使用显式“压缩”指令（与 dsh-compaction-basic 互斥）
+    # 可选：替换默认压缩后端，使用显式“压缩”指令（与 dsh-compaction-basic 互斥，复用 compact 路由）
     engine:
       enabled: false
       thresholdRatio: 0.8

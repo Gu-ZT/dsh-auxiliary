@@ -2,9 +2,9 @@
  * Browser-half entry for dsh-auxiliary — runs inside the dsh web GUI.
  *
  * Registers the "Auxiliary Models" settings section (`settings.section` slot):
- * a page that picks the provider and model already configured in Models for
- * auxiliary work. Reads live provider topology and persists the selection
- * through the connection's Host API; no custom Host routes.
+ * a page with independent vision and compaction cards that pick provider/model
+ * routes already configured in Models. Reads the live provider topology and
+ * persists each feature through the connection's Host API; no custom Host routes.
  *
  * Export discipline (packages/client rule): the /client surface carries what
  * cordis loading needs plus types only — all value exports stay internal.

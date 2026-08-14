@@ -1,9 +1,9 @@
 /**
  * The model-facing `inspect_image` tool: read a local image file, commit it
  * through the attachment seam, and ask the selected configured vision model.
- * The tool stays registered when no provider/model is selected and then fails
- * with a clear execution-time error, so a saved selection takes effect without
- * a plugin restart.
+ * When the tool is enabled it remains registered even without a selected route,
+ * preserving the existing execution-time error and pass-through behavior while
+ * route values are read from the current resolved snapshot for each call.
  *
  * @module dsh-auxiliary/vision-tool
  */
@@ -123,14 +123,18 @@ async function askVision(
   }
 }
 
-/** Register the `inspect_image` tool plus its system-prompt guidance. */
-export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig): void {
-  ctx.systemPrompt.section({
+/**
+ * Register the `inspect_image` tool plus its system-prompt guidance.
+ *
+ * @returns a disposer that removes both registrations made by this function.
+ */
+export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig): () => void {
+  const disposePrompt = ctx.systemPrompt.section({
     name: 'tool:inspect_image',
     order: 160,
     text: 'Use the inspect_image tool to analyze local image files (screenshots, photos, diagrams) with the selected vision model. Pass the file path and an optional question; the answer comes back as text.'
   });
-  ctx.tools.register(defineTool({
+  const disposeTool = ctx.tools.register(defineTool({
     name: 'inspect_image',
     description: 'Analyze a local image file with the selected vision model. Pass an absolute or workspace-relative path to a PNG/JPEG/WebP/GIF file and an optional question; returns the vision model\'s answer as text.',
     parameters: {
@@ -182,4 +186,9 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
       return { content: answer, path: input.path };
     }
   }));
+
+  return () => {
+    disposeTool();
+    disposePrompt();
+  };
 }

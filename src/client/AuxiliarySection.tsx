@@ -1,17 +1,31 @@
 /**
- * The "Auxiliary Models" settings page: pick the provider and model already
- * configured in Models for auxiliary work. Reads the live provider topology
- * (`llm.providers` / `llm.models`) and persists the selection into the
- * dsh-auxiliary settings namespace (`settings.update`).
+ * The Auxiliary Models settings page: configure vision understanding and
+ * context compaction independently while reusing routes from the Models page.
+ * Each card keeps its own draft; the parent owns the namespace snapshot,
+ * revision, and serialized write queue.
+ *
  * @module dsh-auxiliary/client/AuxiliarySection
  */
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { IApiClient } from '@deepseek-ai/dsh-client-connection/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SettingsSectionOwnerProps } from '@deepseek-ai/dsh-client-ui-settings/client';
-import { loadAuxSettings, loadModels, loadProviders, saveAuxSelection, type AuxSettings, type ModelOption, type ProviderOption } from './api.js';
+import {
+  AuxiliaryApiError,
+  conflictRevision,
+  loadAuxSettings,
+  loadModels,
+  saveAuxFeature,
+  type AuxFeature,
+  type AuxFeatureDraft,
+  type AuxFeatureSettings,
+  type AuxSettings,
+  type AuxSettingsSnapshot,
+  type ModelCatalog,
+} from './api.js';
+import { ModelPicker } from './ModelPicker.js';
 
-/** Composed props: settings section owner share + this page's injected face. */
+/** Composed props: settings section owner share plus this page's injected face. */
 export interface AuxiliarySectionProps extends SettingsSectionOwnerProps {
   /** The connection's shared API client. */
   api: IApiClient;
@@ -20,249 +34,379 @@ export interface AuxiliarySectionProps extends SettingsSectionOwnerProps {
 }
 
 const sectionStyle: CSSProperties = {
+  color: 'var(--dsw-alias-label-primary)',
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
-  maxWidth: 640,
-  color: 'var(--dsw-alias-label-primary)',
+  gap: 14,
+  maxWidth: 680,
 };
 
 const titleStyle: CSSProperties = {
-  margin: 0,
   fontSize: 16,
   fontWeight: 500,
   lineHeight: '24px',
+  margin: 0,
 };
 
 const introStyle: CSSProperties = {
-  margin: 0,
+  color: 'var(--dsw-alias-label-tertiary)',
   fontSize: 14,
   lineHeight: '22px',
+  margin: 0,
+};
+
+const cardStyle: CSSProperties = {
+  border: '1px solid var(--dsw-alias-border-l2)',
+  borderRadius: 10,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 16,
+};
+
+const cardTitleStyle: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 500,
+  lineHeight: '22px',
+  margin: 0,
+};
+
+const cardDescriptionStyle: CSSProperties = {
   color: 'var(--dsw-alias-label-tertiary)',
+  fontSize: 13,
+  lineHeight: '20px',
+  margin: 0,
+};
+
+const toggleStyle: CSSProperties = {
+  alignItems: 'center',
+  color: 'var(--dsw-alias-label-secondary)',
+  display: 'flex',
+  fontSize: 13,
+  gap: 8,
+  lineHeight: '20px',
+};
+
+const checkboxStyle: CSSProperties = {
+  height: 16,
+  margin: 0,
+  width: 16,
 };
 
 const fieldStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 6,
-  marginTop: 8,
+  marginTop: 2,
 };
 
 const labelStyle: CSSProperties = {
+  color: 'var(--dsw-alias-label-secondary)',
   fontSize: 12,
   fontWeight: 500,
   lineHeight: '18px',
-  color: 'var(--dsw-alias-label-secondary)',
 };
 
-const inputStyle: CSSProperties = {
-  boxSizing: 'border-box',
-  border: '1px solid var(--dsw-alias-border-l2)',
-  width: '100%',
-  maxWidth: 320,
-  height: 32,
-  font: 'inherit',
-  background: 'var(--dsw-alias-bg-layer-1)',
-  color: 'var(--dsw-alias-label-primary)',
-  borderRadius: 8,
-  padding: '0 10px',
-  fontSize: 14,
-  lineHeight: '22px',
-  cursor: 'pointer',
+const usageStyle: CSSProperties = {
+  color: 'var(--dsw-alias-label-tertiary)',
+  fontSize: 12,
+  lineHeight: '18px',
+  margin: 0,
 };
 
 const saveRowStyle: CSSProperties = {
-  display: 'flex',
   alignItems: 'center',
+  display: 'flex',
   gap: 10,
-  marginTop: 4,
+  marginTop: 2,
 };
 
 const saveStyle: CSSProperties = {
-  boxSizing: 'border-box',
-  height: 32,
-  font: 'inherit',
-  cursor: 'pointer',
+  background: 'var(--dsw-alias-button-primary-fill)',
   border: 'none',
   borderRadius: 16,
-  padding: '0 14px',
-  fontSize: 14,
-  lineHeight: '22px',
-  background: 'var(--dsw-alias-button-primary-fill)',
+  boxSizing: 'border-box',
   color: 'var(--dsw-alias-label-primary-foreground)',
+  cursor: 'pointer',
+  font: 'inherit',
+  fontSize: 14,
+  height: 32,
+  lineHeight: '22px',
+  padding: '0 14px',
 };
 
-const savedStyle: CSSProperties = {
-  margin: 0,
+const statusStyle: CSSProperties = {
+  color: 'var(--dsw-alias-state-success-primary)',
   fontSize: 12,
   lineHeight: '18px',
-  color: 'var(--dsw-alias-state-success-primary)',
+  margin: 0,
 };
 
 const errorStyle: CSSProperties = {
-  margin: 0,
+  color: 'var(--dsw-alias-state-error-primary)',
   fontSize: 12,
   lineHeight: '18px',
-  color: 'var(--dsw-alias-state-error-primary)',
+  margin: 0,
 };
 
-/** Pick the model that should be selected for a provider (stored one, else the first). */
-function initialModel(models: readonly ModelOption[], stored: string | undefined): string {
-  if (stored !== undefined && models.some((model) => model.id === stored)) return stored;
-  return models[0]?.id ?? '';
+/** Convert an unknown thrown value to display text without using it as a code. */
+function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+/** Translate structured save failures while preserving ordinary diagnostics. */
+function saveErrorMessage(cause: unknown, t: TranslateNS<'dsh-auxiliary'>): string {
+  if (cause instanceof AuxiliaryApiError) {
+    if (cause.code === 'settings-conflict') return t('settingsConflict');
+    if (cause.code === 'invalid-route') return t('routeIncomplete');
+  }
+  return errorMessage(cause);
+}
+
+interface FeatureCardProps {
+  feature: AuxFeature;
+  title: string;
+  description: string;
+  toggleLabel: string;
+  pickerLabel: string;
+  usage: string;
+  initial: AuxFeatureSettings;
+  groups: ModelCatalog['groups'];
+  disabled: boolean;
+  t: TranslateNS<'dsh-auxiliary'>;
+  onSave: (feature: AuxFeature, draft: AuxFeatureDraft) => Promise<void>;
+}
+
+/** One independently drafted auxiliary feature card. */
+function FeatureCard({
+  feature,
+  title,
+  description,
+  toggleLabel,
+  pickerLabel,
+  usage,
+  initial,
+  groups,
+  disabled,
+  t,
+  onSave,
+}: FeatureCardProps): JSX.Element {
+  const [draft, setDraft] = useState<AuxFeatureDraft>(() => ({ ...initial }));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | undefined>();
+  const locked = disabled || saving;
+  const canSave = !locked;
+
+  const updateEnabled = (enabled: boolean): void => {
+    setDraft((previous) => ({ ...previous, enabled }));
+    setSaved(false);
+    setError(undefined);
+  };
+
+  const updateRoute = (route: { provider?: string; model?: string }): void => {
+    setDraft((previous) => ({ ...previous, ...route }));
+    setSaved(false);
+    setError(undefined);
+  };
+
+  const save = async (): Promise<void> => {
+    if (!canSave) return;
+    setSaving(true);
+    setSaved(false);
+    setError(undefined);
+    try {
+      await onSave(feature, draft);
+      setSaved(true);
+    } catch (cause) {
+      setError(saveErrorMessage(cause, t));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section style={cardStyle} aria-labelledby={`${feature}-title`}>
+      <h3 id={`${feature}-title`} style={cardTitleStyle}>{title}</h3>
+      <p style={cardDescriptionStyle}>{description}</p>
+      <label style={toggleStyle}>
+        <input
+          type="checkbox"
+          checked={draft.enabled}
+          disabled={locked}
+          style={checkboxStyle}
+          onChange={(event) => { updateEnabled(event.target.checked); }}
+        />
+        <span>{toggleLabel}</span>
+      </label>
+      <label style={fieldStyle}>
+        <span style={labelStyle}>{pickerLabel}</span>
+        <ModelPicker
+          groups={groups}
+          value={draft}
+          onChange={updateRoute}
+          disabled={locked}
+          label={pickerLabel}
+          placeholder={t('pickerPlaceholder')}
+          emptyLabel={t('pickerEmpty')}
+          unavailableLabel={t('pickerUnavailable')}
+          listLabel={t('pickerListLabel')}
+        />
+      </label>
+      <p style={usageStyle}>{usage}</p>
+      <div style={saveRowStyle}>
+        <button
+          type="button"
+          style={{ ...saveStyle, opacity: canSave ? 1 : 0.4 }}
+          disabled={!canSave}
+          onClick={() => { void save(); }}
+        >
+          {saving ? t('saving') : t('save')}
+        </button>
+        {saved ? <p style={statusStyle}>{t('saved')}</p> : null}
+      </div>
+      {error !== undefined ? <p role="alert" style={errorStyle}>{t('error')} {error}</p> : null}
+    </section>
+  );
 }
 
 /** The Auxiliary Models settings section. */
 export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element {
-  const [providers, setProviders] = useState<ProviderOption[]>([]);
-  const [modelsByProvider, setModelsByProvider] = useState<Record<string, ModelOption[]>>({});
-  const [provider, setProvider] = useState('');
-  const [model, setModel] = useState('');
-  const [revision, setRevision] = useState<number | undefined>(undefined);
-  const [settingsAvailable, setSettingsAvailable] = useState(false);
-  const [settingsWritable, setSettingsWritable] = useState(false);
-  const [catalogFailure, setCatalogFailure] = useState<string | undefined>(undefined);
+  const [catalog, setCatalog] = useState<ModelCatalog | undefined>();
+  const [settings, setSettings] = useState<AuxSettings | undefined>();
+  const [revision, setRevision] = useState<number | undefined>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState<string | undefined>();
+  const [writingFeature, setWritingFeature] = useState<AuxFeature | undefined>();
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+  const revisionRef = useRef<number | undefined>();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [providerRows, catalog] = await Promise.all([
-          loadProviders(api),
-          loadModels(api),
-        ]);
-        let current: AuxSettings | undefined;
-        let settingsError: string | undefined;
-        try {
-          current = await loadAuxSettings(api);
-        } catch (cause) {
-          settingsError = cause instanceof Error ? cause.message : String(cause);
-        }
-        if (cancelled) return;
-        // Only routes that are live AND advertise at least one catalog model
-        // are selectable; inactive or model-less providers are dropped.
-        const available = providerRows.filter(
-          (row) => row.active && (catalog.modelsByProvider[row.id]?.length ?? 0) > 0,
-        );
-        setProviders(available);
-        setModelsByProvider(catalog.modelsByProvider);
-        setRevision(current?.revision);
-        setSettingsAvailable(current?.available ?? false);
-        setSettingsWritable(current?.writable ?? false);
-        setCatalogFailure(catalog.failures.length === 0
-          ? undefined
-          : catalog.failures.map((failure) => `${failure.name} (${failure.id}): ${failure.message}`).join('; '));
-        setError(settingsError);
-        // Prefer the stored selection while it is still selectable; otherwise
-        // fall back to the first available provider (never an inactive route).
-        const stored = current?.selection.provider;
-        const initial = stored !== undefined && stored !== ''
-          && available.some((row) => row.id === stored)
-          ? stored
-          : (available[0]?.id ?? '');
-        setProvider(initial);
-        setModel(initialModel(catalog.modelsByProvider[initial] ?? [], current?.selection.model));
-      } catch (cause) {
-        if (cancelled) return;
-        setError(cause instanceof Error ? cause.message : String(cause));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [api]);
-
-  const onProviderChange = useCallback((next: string) => {
-    setProvider(next);
-    setModel(initialModel(modelsByProvider[next] ?? [], undefined));
-    setSaved(false);
-  }, [modelsByProvider]);
-
-  const onModelChange = useCallback((next: string) => {
-    setModel(next);
-    setSaved(false);
+  const adoptSettings = useCallback((next: AuxSettings): void => {
+    revisionRef.current = next.revision;
+    setRevision(next.revision);
+    setSettings(next);
   }, []);
 
-  const onSave = useCallback(async () => {
-    if (!settingsAvailable || !settingsWritable || provider === '' || model === '') return;
-    setSaving(true);
-    setError(undefined);
-    setSaved(false);
-    try {
-      // settings.update bumps the namespace revision; adopt the returned one
-      // so a consecutive save sends a fresh expectedRevision instead of a
-      // stale copy that the settings seam would refuse.
-      const next = await saveAuxSelection(api, { provider, model }, revision);
-      setRevision(next);
-      setSaved(true);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
-    } finally {
-      setSaving(false);
-    }
-  }, [api, model, provider, revision, settingsAvailable, settingsWritable]);
+  const adoptSnapshot = useCallback((next: AuxSettingsSnapshot): void => {
+    revisionRef.current = next.revision;
+    setRevision(next.revision);
+    setSettings((previous) => previous === undefined
+      ? previous
+      : {
+        ...previous,
+        vision: next.vision,
+        compact: next.compact,
+        revision: next.revision,
+      });
+  }, []);
 
-  const modelOptions = modelsByProvider[provider] ?? [];
-  const canSave = settingsAvailable && settingsWritable && provider !== '' && model !== '' && !saving;
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(undefined);
+    void Promise.allSettled([loadModels(api), loadAuxSettings(api)]).then(([catalogResult, settingsResult]) => {
+      if (!active) return;
+      const errors: string[] = [];
+      if (catalogResult.status === 'fulfilled') {
+        setCatalog(catalogResult.value);
+      } else {
+        errors.push(errorMessage(catalogResult.reason));
+      }
+      if (settingsResult.status === 'fulfilled') {
+        adoptSettings(settingsResult.value);
+      } else {
+        errors.push(errorMessage(settingsResult.reason));
+      }
+      setLoadError(errors.length === 0 ? undefined : errors.join('; '));
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [api, adoptSettings]);
+
+  const saveFeature = useCallback(async (feature: AuxFeature, draft: AuxFeatureDraft): Promise<void> => {
+    const previousWrite = writeQueue.current;
+    let release!: () => void;
+    writeQueue.current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previousWrite;
+    setWritingFeature(feature);
+    try {
+      const next = await saveAuxFeature(api, feature, draft, revisionRef.current);
+      adoptSnapshot(next);
+    } catch (cause) {
+      const actualRevision = conflictRevision(cause);
+      if (actualRevision !== undefined) {
+        revisionRef.current = actualRevision;
+        setRevision(actualRevision);
+        setSettings((previous) => previous === undefined
+          ? previous
+          : { ...previous, revision: actualRevision });
+      }
+      throw cause;
+    } finally {
+      setWritingFeature(undefined);
+      release();
+    }
+  }, [api, adoptSnapshot]);
+
+  const catalogFailure = catalog === undefined || catalog.failures.length === 0
+    ? undefined
+    : catalog.failures.map((failure) => `${failure.name} (${failure.id}): ${failure.message}`).join('; ');
+  const settingsReady = settings?.available === true;
+  const settingsWritable = settings?.writable === true;
+  const cardsDisabled = !settingsReady || !settingsWritable || writingFeature !== undefined;
 
   return (
     <div style={sectionStyle}>
       <h2 style={titleStyle}>{t('nav')}</h2>
       <p style={introStyle}>{t('intro')}</p>
       {loading ? <p style={introStyle}>{t('loading')}</p> : null}
-      {!loading && !settingsAvailable ? <p style={errorStyle}>{t('settingsUnavailable')}</p> : null}
-      {!loading && settingsAvailable && !settingsWritable ? <p style={errorStyle}>{t('settingsReadOnly')}</p> : null}
-      {!loading && catalogFailure !== undefined ? <p style={errorStyle}>{t('catalogFailure')} {catalogFailure}</p> : null}
-      {!loading && providers.length === 0 ? <p style={errorStyle}>{t('noProvider')}</p> : null}
-      {!loading && providers.length > 0 ? (
+      {!loading && loadError !== undefined ? <p role="alert" style={errorStyle}>{t('error')} {loadError}</p> : null}
+      {!loading && settings !== undefined && !settings.available
+        ? <p role="alert" style={errorStyle}>{t('settingsUnavailable')}</p>
+        : null}
+      {!loading && settings?.available === true && !settings.writable
+        ? <p role="alert" style={errorStyle}>{t('settingsReadOnly')}</p>
+        : null}
+      {!loading && catalogFailure !== undefined
+        ? <p role="alert" style={errorStyle}>{t('catalogFailure')} {catalogFailure}</p>
+        : null}
+      {!loading && catalog !== undefined && catalog.groups.length === 0
+        ? <p role="status" style={introStyle}>{t('noProvider')}</p>
+        : null}
+      {!loading && settingsReady && catalog !== undefined ? (
         <>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>{t('providerLabel')}</span>
-            <select
-              style={inputStyle}
-              value={provider}
-              onChange={(event) => onProviderChange(event.target.value)}
-            >
-              {providers.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={fieldStyle}>
-            <span style={labelStyle}>{t('modelLabel')}</span>
-            <select
-              style={inputStyle}
-              value={model}
-              onChange={(event) => onModelChange(event.target.value)}
-            >
-              {modelOptions.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.name}</option>
-              ))}
-            </select>
-          </label>
-          <p style={introStyle}>{t('imageUsage')}</p>
-          <div style={saveRowStyle}>
-            <button
-              type="button"
-              style={{ ...saveStyle, opacity: canSave ? 1 : 0.4 }}
-              disabled={!canSave}
-              onClick={() => { void onSave(); }}
-            >
-              {t('save')}
-            </button>
-            {saved ? <p style={savedStyle}>{t('saved')}</p> : null}
-          </div>
+          <FeatureCard
+            feature="vision"
+            title={t('visionTitle')}
+            description={t('visionDescription')}
+            toggleLabel={t('visionToggle')}
+            pickerLabel={t('visionPickerLabel')}
+            usage={t('visionUsage')}
+            initial={settings.vision}
+            groups={catalog.groups}
+            disabled={cardsDisabled}
+            t={t}
+            onSave={saveFeature}
+          />
+          <FeatureCard
+            feature="compact"
+            title={t('compactTitle')}
+            description={t('compactDescription')}
+            toggleLabel={t('compactToggle')}
+            pickerLabel={t('compactPickerLabel')}
+            usage={t('compactUsage')}
+            initial={settings.compact}
+            groups={catalog.groups}
+            disabled={cardsDisabled}
+            t={t}
+            onSave={saveFeature}
+          />
         </>
       ) : null}
-      {error !== undefined ? <p style={errorStyle}>{t('error')} {error}</p> : null}
     </div>
   );
 }

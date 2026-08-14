@@ -10,10 +10,10 @@ English | [简体中文](README.zh_CN.md)
 
 `dsh-auxiliary` is a [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) plugin that adds auxiliary model capabilities on top of the harness LLM seam (`ctx.llm`), without changing the main conversation model:
 
-- **Vision model** — reuses a provider and model already configured in Models: add them in the **Models** page, then pick them under **Settings → Auxiliary Models** (saved as `vision.provider` + `vision.model`), and `inspect_image` calls the vision model through that provider.
+- **Vision model** — reuses a provider and model already configured in Models: add them in the **Models** page, then pick them under **Settings → Auxiliary Models → Vision understanding** (saved as `vision.provider` + `vision.model`); `tool.enabled` independently controls whether `inspect_image` is registered.
 - **`inspect_image` tool** — lets the agent read a local image file and ask the auxiliary vision model about it, so a text-only main model can still understand screenshots, photos, and diagrams.
-- **Compaction routing** — an `llm/stream` waterfall listener reroutes every `purpose: 'compaction'` summary call to a dedicated auxiliary summarizer pair, so context compression runs on a separate (cheaper/faster, or vision-capable) model.
-- **Compression engine** *(optional)* — a `BasicCompactionEngine` subclass that drives summarization with an explicit context-compression instruction instead of the default prompt.
+- **Compaction routing** — an `llm/stream` waterfall listener reroutes every `purpose: 'compaction'` summary call to a dedicated auxiliary summarizer pair; `compact.enabled`, `compact.provider`, and `compact.model` are independent of the vision feature.
+- **Compression engine** *(optional)* — a `BasicCompactionEngine` subclass that drives summarization with an explicit context-compression instruction instead of the default prompt; it adds no third model route and reuses the compact route when enabled.
 
 ## How it works
 
@@ -79,13 +79,13 @@ All fields are optional; defaults are shown.
 ### Settings page: Auxiliary Models
 
 The plugin ships a web settings section (**Settings → Auxiliary Models**).
-Configure a provider and its models in the **Models** page first, then pick
-them here: the page lists only providers that are currently enabled and
-advertise at least one model in the catalog, and the model list shows only
-that provider's catalog models. Saving writes `vision.provider` and
-`vision.model` — the selection only affects the vision model `inspect_image`
-uses; compaction summaries keep their own independent `compact.provider` /
-`compact.model` pair.
+Configure a provider and its models in the **Models** page first, then use the
+two independent cards here: **Vision understanding** has its own `tool.enabled`
+switch and `vision.provider` / `vision.model`, while **Context compaction** has
+its own `compact.enabled` switch and `compact.provider` / `compact.model`.
+The picker presents all currently available models together, grouped by
+provider. A saved route that is temporarily absent from the catalog is kept
+and is never replaced automatically.
 
 The browser catalog exposes provider and model names, not image-input
 capabilities, so choose a model known to accept image input. When the Host
@@ -93,10 +93,11 @@ explicitly reports that the selected route is text-only, `inspect_image`
 rejects it at execution time.
 
 Selecting an auxiliary vision model does **not** enable the chat attachment
-control: image attachments are validated against the current session's main
-model before the plugin is involved. Put the image at a Host-readable
-workspace-relative or absolute path, then ask the agent to run
-`inspect_image`, for example: `Use inspect_image to analyze
+control: the chat composer still validates images against the current session's
+main model. If it says “the current model does not support images”, switch the
+main model in the chat composer. To use the vision model selected here, put the
+image at a Host-readable workspace-relative or absolute path, then ask the
+agent to run `inspect_image`, for example: `Use inspect_image to analyze
 screenshots/error.png`.
 
 ### Notes

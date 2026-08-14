@@ -65,18 +65,35 @@ export function apply(ctx: Context, config: PluginConfig): void {
     settingsNs: NS,
     settingsPath: ['vision']
   }]);
+  let visionToolDisposer: (() => void) | undefined;
+  const disposeVisionTool = (): void => {
+    const disposer = visionToolDisposer;
+    visionToolDisposer = undefined;
+    disposer?.();
+  };
+  const reconcileVisionTool = (): void => {
+    if (resolved().tool.enabled) {
+      if (visionToolDisposer === undefined) {
+        visionToolDisposer = registerVisionTool(ctx, resolved);
+      }
+      return;
+    }
+    disposeVisionTool();
+  };
+
+  ctx.effect(() => () => {
+    disposeVisionTool();
+  }, 'dsh-auxiliary: vision tool lifecycle');
+
   installSettingsSection(ctx, NS, Config, config, {
     setSource: (source) => {
       current = source;
     },
-    onChange: () => {
-      resolved();
-    }
+    onChange: reconcileVisionTool,
+    validate: resolvePluginConfig
   });
 
-  if (resolved().tool.enabled) {
-    registerVisionTool(ctx, resolved);
-  }
+  reconcileVisionTool();
   installCompactRouter(ctx, resolved);
   if (resolved().engine.enabled) {
     installCompressionEngine(ctx, resolved);

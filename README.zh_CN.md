@@ -10,10 +10,10 @@
 
 `dsh-auxiliary` 是一个 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) 插件，在 harness 的 LLM 抽象层（`ctx.llm`）之上添加辅助模型能力，且不影响主对话模型：
 
-- **视觉模型** —— 复用「模型」页已配置的提供商与模型：先在「模型」页添加提供商及其模型，再到 **设置 → 辅助模型** 选择并保存（写入 `vision.provider` / `vision.model`），`inspect_image` 即通过该提供商调用视觉模型。
+- **视觉模型** —— 复用「模型」页已配置的提供商与模型：先在「模型」页添加提供商及其模型，再到 **设置 → 辅助模型 → 视觉理解** 选择并保存（写入 `vision.provider` / `vision.model`），`tool.enabled` 单独控制 `inspect_image` 是否注册。
 - **`inspect_image` 工具** —— 让智能体读取本地图片文件并询问辅助视觉模型，使纯文本主模型也能理解截图、照片与图表。
-- **压缩路由** —— 通过 `llm/stream` waterfall 监听器，把每次 `purpose: 'compaction'` 的摘要调用改路由到独立的辅助摘要模型对，让上下文压缩跑在单独的（更便宜/更快，或具备视觉能力的）模型上。
-- **压缩引擎**（可选）—— 继承 `BasicCompactionEngine` 的子类，用显式的上下文压缩指令驱动摘要，替代默认提示词。
+- **压缩路由** —— 通过 `llm/stream` waterfall 监听器，把每次 `purpose: 'compaction'` 的摘要调用改路由到独立的辅助摘要模型对；`compact.enabled`、`compact.provider` 与 `compact.model` 都与视觉功能独立。
+- **压缩引擎**（可选）—— 继承 `BasicCompactionEngine` 的子类，用显式的上下文压缩指令驱动摘要，替代默认提示词；它不增加第三条模型路由，启用时复用 compact 路由。
 
 ## 工作原理
 
@@ -78,11 +78,11 @@ npm install dsh-auxiliary
 
 ### 设置页：辅助模型
 
-插件自带一个 Web 设置分区（**设置 → 辅助模型**）。先在「模型」页配置好提供商及其模型，再回到这里选择：页面只列出当前已启用、且模型目录中至少提供一个模型的提供商，模型下拉只显示该提供商的目录模型。点击「保存」写入 `vision.provider` 与 `vision.model`——该选择只影响 `inspect_image` 使用的视觉模型；压缩摘要使用的模型由 `compact.provider` / `compact.model` 独立配置，互不影响。
+插件自带一个 Web 设置分区（**设置 → 辅助模型**）。先在「模型」页配置好提供商及其模型，再回到这里配置两张独立卡片：**视觉理解**有自己的 `tool.enabled` 开关与 `vision.provider` / `vision.model`，**上下文压缩**有自己的 `compact.enabled` 开关与 `compact.provider` / `compact.model`。模型选择器把所有当前可用模型集中列出，并按提供商分组；已保存但暂时不在目录中的路由会保留，不会被自动替换。
 
 浏览器端模型目录只提供 provider/model 名称，不提供图片输入能力；请自行选择确认支持图片输入的模型。若 Host 明确声明所选路由仅支持文本，`inspect_image` 会在执行时拒绝该调用。
 
-选择辅助视觉模型**不会**启用聊天框的图片附件：插件介入前，附件已按当前会话主模型的图片能力校验。请将图片放在 Host 可读取的工作区相对路径或绝对路径，再让智能体调用 `inspect_image`，例如：`请调用 inspect_image 分析 screenshots/error.png`。
+选择辅助视觉模型**不会**启用聊天框的图片附件：聊天输入框仍按当前会话主模型的图片能力校验。因此看到“当前模型不支持图片，请切换支持图片的模型”时，应切换聊天底部的主模型；若要使用设置页选择的视觉模型，请把图片放在 Host 可读取的工作区相对路径或绝对路径，再让智能体调用 `inspect_image`，例如：`请调用 inspect_image 分析 screenshots/error.png`。
 
 ### 说明
 
