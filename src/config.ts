@@ -58,6 +58,11 @@ const Config = z.object({
     provider: z.string(),
     model: z.string()
   }),
+  subagent: z.object({
+    enabled: z.boolean().default(false).description('Route every delegated child agent (subagent) to a dedicated provider/model pair.'),
+    provider: z.string(),
+    model: z.string()
+  }),
   engine: z.object({
     enabled: z.boolean().default(false),
     thresholdRatio: z.number().step(0.01).min(0.01).max(0.99).default(0.8),
@@ -103,6 +108,13 @@ export interface ResolvedApproveConfig {
   readonly model: string | undefined;
 }
 
+/** Resolved subagent routing policy (dedicated model for delegated children). */
+export interface ResolvedSubagentConfig {
+  readonly enabled: boolean;
+  readonly provider: string | undefined;
+  readonly model: string | undefined;
+}
+
 /** Resolved auxiliary compression-engine policy. */
 export interface ResolvedEngineConfig {
   readonly enabled: boolean;
@@ -121,6 +133,7 @@ export interface ResolvedPluginConfig {
   readonly tool: ResolvedToolConfig;
   readonly compact: ResolvedCompactConfig;
   readonly approve: ResolvedApproveConfig;
+  readonly subagent: ResolvedSubagentConfig;
   readonly engine: ResolvedEngineConfig;
 }
 
@@ -130,6 +143,7 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const tool = config.tool ?? {};
   const compact = config.compact ?? {};
   const approve = config.approve ?? {};
+  const subagent = config.subagent ?? {};
   const engine = config.engine ?? {};
 
   const visionProvider = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
@@ -148,6 +162,12 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const approveModel = typeof approve.model === 'string' && approve.model.length > 0 ? approve.model : undefined;
   if (Boolean(approveProvider) !== Boolean(approveModel)) {
     throw new Error('dsh-auxiliary: approve.provider and approve.model must be set together');
+  }
+
+  const subagentProvider = typeof subagent.provider === 'string' && subagent.provider.length > 0 ? subagent.provider : undefined;
+  const subagentModel = typeof subagent.model === 'string' && subagent.model.length > 0 ? subagent.model : undefined;
+  if (Boolean(subagentProvider) !== Boolean(subagentModel)) {
+    throw new Error('dsh-auxiliary: subagent.provider and subagent.model must be set together');
   }
 
   const thresholdRatio = engine.thresholdRatio ?? 0.8;
@@ -177,6 +197,11 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
       enabled: approve.enabled ?? false,
       provider: approveProvider,
       model: approveModel
+    },
+    subagent: {
+      enabled: subagent.enabled ?? false,
+      provider: subagentProvider,
+      model: subagentModel
     },
     engine: {
       enabled: engine.enabled ?? false,

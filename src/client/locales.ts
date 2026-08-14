@@ -61,6 +61,12 @@ export const zh = {
   approveUsage: '开启但没有完整 provider/model route 时保持原行为（审查模型继续继承会话或使用插件自身的 reviewProvider/reviewModel 配置）。建议选择便宜快速的模型；审查裁决只用于审批，不写入会话历史。',
   /** Approval card notice when the approve-for-me plugin is not installed. */
   approveNotInstalled: '未检测到 dsh-command-approve-for-me 插件：请先安装并启用该插件（review 模式），此设置才会生效；当前保存此配置不会产生任何影响。',
+  /** Subagent routing card. */
+  subagentTitle: '子代理模型',
+  subagentDescription: '为委派出去的子代理设置独立模型路由。',
+  subagentToggle: '启用子代理模型',
+  subagentPickerLabel: '子代理模型',
+  subagentUsage: '开启后，所有委派子代理（spawn/fork 一次性委托与可续接子代理）统一使用所选模型，不再继承父会话；进程内冷恢复的子代理同样生效。远程提供方（ACP）创建的子代理不经过本机代理注册，仍继承父会话。建议选择便宜快速的模型以控制委派成本。',
   /** Model picker trigger placeholder. */
   pickerPlaceholder: '选择提供商和模型',
   /** Model picker empty state. */
@@ -113,6 +119,11 @@ export const en: Record<AuxiliaryKey, string> = {
   approvePickerLabel: 'Approval model',
   approveUsage: 'An enabled feature without a complete provider/model route keeps the original behavior (the reviewer keeps inheriting the session or the plugin\'s own reviewProvider/reviewModel config). Prefer a cheap, fast model; the review verdict only decides approval and never enters the session history.',
   approveNotInstalled: 'The dsh-command-approve-for-me plugin was not detected: install and enable it (review mode) first — until then, saving this configuration has no effect.',
+  subagentTitle: 'Subagent model',
+  subagentDescription: 'Set a dedicated model route for delegated child agents.',
+  subagentToggle: 'Enable subagent model',
+  subagentPickerLabel: 'Subagent model',
+  subagentUsage: 'When enabled, every delegated child (one-shot spawn/fork runs and continuable children) uses the selected model instead of inheriting the parent session; in-process cold-resumed children are covered too. Remote providers (ACP) never register a process-local agent and their children keep inheriting the parent route. Prefer a cheap, fast model to control delegation cost.',
   pickerPlaceholder: 'Choose a provider and model',
   pickerEmpty: 'No selectable models are available.',
   pickerUnavailable: 'Saved route is currently unavailable',

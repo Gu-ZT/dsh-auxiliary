@@ -160,6 +160,27 @@ with editing disabled when the plugin's presets are absent from the live
 `permissionPresets` table. The endpoint is loopback-local, returns no
 sensitive data, and is simply absent on headless profiles.
 
+### Subagent model
+
+```yaml
+subagent:
+  enabled: true
+  provider: anvilcraft-ai
+  model: deepseek-chat
+```
+
+Child agents inherit their parent's model route by default. When this feature
+is enabled with a complete route, every delegated child — one-shot spawn/fork
+runs and continuable children, including cold-resumed ones — is routed to the
+selected pair instead. The plugin listens for `agent/created` and, for agents
+whose delegation depth is > 0, installs an `agent/request` waterfall listener
+on the agent's own scoped context; returning a replacement `LlmCallConfig` is
+the loop's official "switch" contract, so the changed header snapshot is
+logged like any other model switch. Remote providers (ACP) never register a
+process-local agent and their children keep inheriting the parent route.
+Prefer a cheap, fast model to control delegation cost. No external plugin is
+required.
+
 ### Notes
 
 - `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `deepseek-official` with a cheaper model (placeholders; replace with your actual provider route and model id).

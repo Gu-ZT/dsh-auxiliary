@@ -14,6 +14,7 @@ import { Config, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type Resol
 import { registerVisionTool } from './vision-tool.js';
 import { registerImageHandoff } from './image-handoff.js';
 import { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
+import { registerSubagentRouter } from './subagent-router.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
 
@@ -21,6 +22,7 @@ export { Config, PLUGIN_NAME, resolvePluginConfig } from './config.js';
 export { registerVisionTool } from './vision-tool.js';
 export { registerImageHandoff } from './image-handoff.js';
 export { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
+export { registerSubagentRouter } from './subagent-router.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
 
@@ -119,6 +121,23 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeApproveRouter();
   };
 
+  let subagentRouterDisposer: (() => void) | undefined;
+  const disposeSubagentRouter = (): void => {
+    const disposer = subagentRouterDisposer;
+    subagentRouterDisposer = undefined;
+    disposer?.();
+  };
+  const reconcileSubagentRouter = (): void => {
+    const subagent = resolved().subagent;
+    if (subagent.enabled && subagent.provider !== undefined && subagent.model !== undefined) {
+      if (subagentRouterDisposer === undefined) {
+        subagentRouterDisposer = registerSubagentRouter(ctx, resolved);
+      }
+      return;
+    }
+    disposeSubagentRouter();
+  };
+
   // Read-only state endpoint for the settings page; independent of the routing
   // feature because the card must render its "plugin not installed" notice even
   // when `approve.enabled` is off.
@@ -128,6 +147,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeVisionTool();
     disposeHandoff();
     disposeApproveRouter();
+    disposeSubagentRouter();
     approveStateDisposer();
   }, 'dsh-auxiliary: vision tool, handoff, and approval-router lifecycle');
 
@@ -146,6 +166,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
   reconcileVisionTool();
   reconcileHandoff();
   reconcileApproveRouter();
+  reconcileSubagentRouter();
   installCompactRouter(ctx, resolved);
   if (resolved().engine.enabled) {
     installCompressionEngine(ctx, resolved);

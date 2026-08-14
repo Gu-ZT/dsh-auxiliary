@@ -320,6 +320,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         vision: next.vision,
         compact: next.compact,
         approve: next.approve,
+        subagent: next.subagent,
         revision: next.revision,
       });
   }, []);
@@ -448,6 +449,19 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             initial={settings.approve}
             groups={catalog.groups}
             disabled={approveDisabled}
+            t={t}
+            onSave={saveFeature}
+          />
+          <FeatureCard
+            feature="subagent"
+            title={t('subagentTitle')}
+            description={t('subagentDescription')}
+            toggleLabel={t('subagentToggle')}
+            pickerLabel={t('subagentPickerLabel')}
+            usage={t('subagentUsage')}
+            initial={settings.subagent}
+            groups={catalog.groups}
+            disabled={cardsDisabled}
             t={t}
             onSave={saveFeature}
           />

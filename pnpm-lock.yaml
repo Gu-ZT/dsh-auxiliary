@@ -63,6 +63,9 @@ importers:
       '@deepseek-ai/dsh-permission-presets':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(4488b9fb0037511452a34189ca88160d)
+      '@deepseek-ai/dsh-subagent':
+        specifier: ^0.1.0-rc.6
+        version: 0.1.0-rc.6(4aacb0222c4facc173b0ce0d58a42120)
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31

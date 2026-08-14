@@ -110,6 +110,17 @@ npm install dsh-auxiliary
 
 设置页会检测插件是否安装：插件通过可选的 `webServer` 服务提供只读 JSON 端点 `/dsh-auxiliary/state`（`{ "approvePluginInstalled": true|false }`）；当插件的预设不在 `permissionPresets` 实时表中时，「审批模型」卡片显示"未检测到插件"提示并禁用编辑。端点仅监听本机回环、不返回敏感数据，headless profile 中不会注册。
 
+### 子代理模型
+
+```yaml
+subagent:
+  enabled: true
+  provider: anvilcraft-ai
+  model: deepseek-chat
+```
+
+子代理默认继承父会话的模型路由。开启此功能且路由完整时，所有委派子代理——一次性 spawn/fork 委托、可续接子代理（含进程内冷恢复）——统一使用所选模型。插件监听 `agent/created`，对委派深度 > 0 的代理在其自身作用域上下文中安装 `agent/request` waterfall 监听；返回替换后的 `LlmCallConfig` 是 loop 官方的"切换"契约，变更的头快照与其他模型切换一样被记录。远程提供方（ACP）创建的子代理不经过本机代理注册，仍继承父会话。建议选择便宜快速的模型控制委派成本。此功能不需要任何外部插件。
+
 ### 说明
 
 - `compact.enabled` 只改路由 `purpose: 'compaction'` 的调用。`provider`/`model` 可指向任意已注册路由——例如 `deepseek-official` 配一个更便宜的模型（示例值，请替换为你实际配置的提供商路由 id 与模型 id）。
