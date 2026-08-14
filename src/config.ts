@@ -61,7 +61,8 @@ const Config = z.object({
     maxTokens: z.number().step(1).min(1).default(DEFAULT_VISION_MAX_TOKENS),
     defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_VISION_CONTEXT_WINDOW),
     streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_VISION_STREAM_IDLE_TIMEOUT_MS),
-    retryPolicy: RetryPolicySchema
+    retryPolicy: RetryPolicySchema,
+    provider: z.string().description('Reference an already-configured provider route (e.g. anvilcraft-ai). When set, vision calls route through that provider instead of the aux-vision custom endpoint.')
   }),
   tool: z.object({
     enabled: z.boolean().default(true),
@@ -88,11 +89,13 @@ const Config = z.object({
 /** Inferred plugin configuration value. */
 export type PluginConfig = typeof Config extends z<infer T> ? T : never;
 
-/** Resolved vision provider facts consumed by the adapter. */
+/** Resolved vision provider facts consumed by the adapter and the tool. */
 export interface ResolvedVisionConfig extends ResolvedVisionOptions {
   readonly enabled: boolean;
   readonly displayName: string;
   readonly apiKeyEnv: string;
+  /** Reference to an already-configured provider route; overrides the aux-vision custom endpoint. */
+  readonly provider: string | undefined;
 }
 
 /** Resolved `inspect_image` tool policy. */
@@ -156,11 +159,13 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const compact = config.compact ?? {};
   const engine = config.engine ?? {};
 
+  const providerRef = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
+
   if (typeof vision.model !== 'string' || vision.model.length === 0) {
     throw new Error('dsh-auxiliary: vision.model must be a non-empty string');
   }
-  if (typeof vision.baseURL !== 'string' || vision.baseURL.length === 0) {
-    throw new Error('dsh-auxiliary: vision.baseURL must be a non-empty string');
+  if (providerRef === undefined && (typeof vision.baseURL !== 'string' || vision.baseURL.length === 0)) {
+    throw new Error('dsh-auxiliary: vision.baseURL must be a non-empty string when no vision.provider reference is set');
   }
   const streamIdleTimeoutMs = vision.streamIdleTimeoutMs ?? DEFAULT_VISION_STREAM_IDLE_TIMEOUT_MS;
   if (!Number.isFinite(streamIdleTimeoutMs) || streamIdleTimeoutMs <= 0 || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) {
@@ -192,14 +197,15 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
     vision: {
       enabled: vision.enabled ?? true,
       displayName: typeof vision.displayName === 'string' && vision.displayName.length > 0 ? vision.displayName : 'Aux Vision (OpenAI-compatible)',
-      baseURL: vision.baseURL,
+      baseURL: typeof vision.baseURL === 'string' ? vision.baseURL : '',
       apiKeyEnv: typeof vision.apiKeyEnv === 'string' && vision.apiKeyEnv.length > 0 ? vision.apiKeyEnv : DEFAULT_VISION_API_KEY_ENV,
       model: vision.model,
       models,
       maxTokens: vision.maxTokens ?? DEFAULT_VISION_MAX_TOKENS,
       defaultContextWindow: vision.defaultContextWindow ?? DEFAULT_VISION_CONTEXT_WINDOW,
       streamIdleTimeoutMs,
-      retryPolicy: resolveRetryPolicy(vision.retryPolicy ?? { mode: 'normal', maxRetries: 2 }, 'dsh-auxiliary: vision.retryPolicy')
+      retryPolicy: resolveRetryPolicy(vision.retryPolicy ?? { mode: 'normal', maxRetries: 2 }, 'dsh-auxiliary: vision.retryPolicy'),
+      provider: providerRef
     },
     tool: {
       enabled: tool.enabled ?? true,

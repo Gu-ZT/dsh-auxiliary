@@ -89,8 +89,11 @@ async function askVision(
   const timeout = deadline(signal, get().tool.timeoutMs, VISION_TOOL_TIMEOUT_CODE);
   try {
     const assembler = new BlockAssembler();
+    // `provider` selects the route: an already-configured provider reference
+    // (set from the settings UI) or the aux-vision custom endpoint.
+    const provider = vision.provider ?? VISION_PROVIDER;
     for await (const chunk of ctx.llm.stream(deepFreeze({
-      provider: VISION_PROVIDER,
+      provider,
       model: vision.model,
       messages,
       maxTokens: vision.maxTokens,
