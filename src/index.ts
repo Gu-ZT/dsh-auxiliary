@@ -13,12 +13,14 @@ import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-sett
 import { Config, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type ResolvedPluginConfig } from './config.js';
 import { registerVisionTool } from './vision-tool.js';
 import { registerImageHandoff } from './image-handoff.js';
+import { registerApproveRouter } from './approve-router.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
 
 export { Config, PLUGIN_NAME, resolvePluginConfig } from './config.js';
 export { registerVisionTool } from './vision-tool.js';
 export { registerImageHandoff } from './image-handoff.js';
+export { registerApproveRouter, isApproveReviewCall } from './approve-router.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
 
@@ -100,10 +102,28 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeHandoff();
   };
 
+  let approveRouterDisposer: (() => void) | undefined;
+  const disposeApproveRouter = (): void => {
+    const disposer = approveRouterDisposer;
+    approveRouterDisposer = undefined;
+    disposer?.();
+  };
+  const reconcileApproveRouter = (): void => {
+    const approve = resolved().approve;
+    if (approve.enabled && approve.provider !== undefined && approve.model !== undefined) {
+      if (approveRouterDisposer === undefined) {
+        approveRouterDisposer = registerApproveRouter(ctx, resolved);
+      }
+      return;
+    }
+    disposeApproveRouter();
+  };
+
   ctx.effect(() => () => {
     disposeVisionTool();
     disposeHandoff();
-  }, 'dsh-auxiliary: vision tool and handoff lifecycle');
+    disposeApproveRouter();
+  }, 'dsh-auxiliary: vision tool, handoff, and approval-router lifecycle');
 
   installSettingsSection(ctx, NS, Config, config, {
     setSource: (source) => {
@@ -112,12 +132,14 @@ export function apply(ctx: Context, config: PluginConfig): void {
     onChange: () => {
       reconcileVisionTool();
       reconcileHandoff();
+      reconcileApproveRouter();
     },
     validate: resolvePluginConfig
   });
 
   reconcileVisionTool();
   reconcileHandoff();
+  reconcileApproveRouter();
   installCompactRouter(ctx, resolved);
   if (resolved().engine.enabled) {
     installCompressionEngine(ctx, resolved);

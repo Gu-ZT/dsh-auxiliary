@@ -66,6 +66,10 @@ All fields are optional; defaults are shown.
       enabled: false                       # reroute compaction summaries to an auxiliary model
       provider: ""                         # e.g. deepseek-official (a registered provider route id)
       model: ""                            # e.g. deepseek-chat (a model id on that provider)
+    approve:
+      enabled: false                       # give dsh-command-approve-for-me's reviews a dedicated model
+      provider: ""                         # e.g. deepseek-official (a registered provider route id)
+      model: ""                            # e.g. deepseek-chat (a model id on that provider)
     engine:
       enabled: false                       # optional compression engine (mutually exclusive with dsh-compaction-basic)
       thresholdRatio: 0.8
@@ -123,6 +127,30 @@ text-only no longer fails. Instead:
 The reference is plain text, so it survives restarts, forks, and replays.
 Disable `vision.handoff` to restore the original rejection behavior. Both
 seams are plugin-side and leave every core package unmodified.
+
+### Approval model (dsh-command-approve-for-me hookup)
+
+[dsh-command-approve-for-me](https://github.com/ZhuRuoLing/dsh-command-approve-for-me)
+adds codex-style auto-approval; in `review` mode a lightweight reviewer model
+decides each approval prompt. By default the reviewer inherits the requesting
+session's model route (or the plugin's own `reviewProvider` / `reviewModel`).
+This plugin's **Approval model** card (`approve.enabled` plus
+`approve.provider` / `approve.model`) gives the review a dedicated model
+instead:
+
+1. A listener on the official `llm/stream` waterfall recognizes the review
+   call by its public contract — the fixed `>>> APPROVAL REQUEST START` marker
+   in the user message, no `sessionId`, and `temperature: 0` — and reroutes it
+   to `approve.provider` / `approve.model`.
+2. Everything else about the call (system policy, transcript, timeout, retries,
+   fallback) stays owned by the approve-for-me plugin; only the model route is
+   swapped. The verdict still never enters the session history.
+
+The routing activates only when the feature is enabled with a complete route;
+without the plugin installed there are no review calls, so the listener is
+inert. Prefer a cheap, fast model for reviews. Requires approve-for-me's
+`mode: review` plus the `approve-for-me` or `strict-review` permission preset
+to take effect.
 
 ### Notes
 

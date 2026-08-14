@@ -317,6 +317,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         ...previous,
         vision: next.vision,
         compact: next.compact,
+        approve: next.approve,
         revision: next.revision,
       });
   }, []);
@@ -422,6 +423,19 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             pickerLabel={t('compactPickerLabel')}
             usage={t('compactUsage')}
             initial={settings.compact}
+            groups={catalog.groups}
+            disabled={cardsDisabled}
+            t={t}
+            onSave={saveFeature}
+          />
+          <FeatureCard
+            feature="approve"
+            title={t('approveTitle')}
+            description={t('approveDescription')}
+            toggleLabel={t('approveToggle')}
+            pickerLabel={t('approvePickerLabel')}
+            usage={t('approveUsage')}
+            initial={settings.approve}
             groups={catalog.groups}
             disabled={cardsDisabled}
             t={t}

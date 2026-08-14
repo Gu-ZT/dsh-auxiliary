@@ -66,6 +66,10 @@ npm install dsh-auxiliary
       enabled: false                       # 把压缩摘要改路由到辅助模型
       provider: ""                         # 示例：deepseek-official（已注册的提供商路由 id）
       model: ""                            # 示例：deepseek-chat（该提供商下的模型 id）
+    approve:
+      enabled: false                       # 为 dsh-command-approve-for-me 的审查提供独立模型
+      provider: ""                         # 示例：deepseek-official（已注册的提供商路由 id）
+      model: ""                            # 示例：deepseek-chat（该提供商下的模型 id）
     engine:
       enabled: false                       # 可选压缩引擎（与 dsh-compaction-basic 互斥）
       thresholdRatio: 0.8
@@ -94,6 +98,15 @@ npm install dsh-auxiliary
 3. 系统提示引导主模型用引用中的 JSON 调用 `describe_image`；该工具读取已存储的附件字节并询问所选视觉模型，返回的文字描述被注入到对话中。
 
 引用是纯文本，因此重启、fork 与历史重放后依然可用。关闭 `vision.handoff` 可恢复原来的拒绝行为。两个挂接点都在插件内，核心包零修改。
+
+### 审批模型（dsh-command-approve-for-me 联动）
+
+[dsh-command-approve-for-me](https://github.com/ZhuRuoLing/dsh-command-approve-for-me) 提供类 Codex 的自动审批；在 `review` 模式下，每条审批提示由轻量审查模型裁决。默认审查模型继承请求方会话的模型路由（或该插件自身的 `reviewProvider` / `reviewModel` 配置）。本插件的 **审批模型** 卡片（`approve.enabled` 加 `approve.provider` / `approve.model`）为审查提供独立模型：
+
+1. 监听官方 `llm/stream` waterfall，按公开契约识别审查调用——用户消息中的固定标记 `>>> APPROVAL REQUEST START`、无 `sessionId`、`temperature: 0`——并将其改路由到 `approve.provider` / `approve.model`。
+2. 调用其余部分（安全策略、转录、超时、重试、回退）仍归 approve-for-me 插件所有，只替换模型路由；裁决依旧不会写入会话历史。
+
+路由仅在功能开启且路由完整时激活；未安装该插件时不存在审查调用，监听器自然闲置。审查建议选择便宜快速的模型。生效前提：approve-for-me 处于 `mode: review` 且会话选中 `approve-for-me` 或 `strict-review` 权限预设。
 
 ### 说明
 

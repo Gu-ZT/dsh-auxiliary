@@ -49,6 +49,16 @@ export const zh = {
   compactPickerLabel: '压缩模型',
   /** Engine reuse explanation. */
   compactUsage: '开启但没有完整 provider/model route 时保持现有 pass-through 行为。`engine` 没有第三个模型选择器；启用压缩引擎时，它复用这里的 compact 路由。',
+  /** Approval feature card heading. */
+  approveTitle: '审批模型',
+  /** Approval feature card explanation. */
+  approveDescription: '联动 dsh-command-approve-for-me 插件：安装该插件并启用 review 模式后，其审批审查调用改由这里选择的独立模型执行，不再继承会话主模型。',
+  /** Approval feature switch label. */
+  approveToggle: '启用审批模型路由',
+  /** Approval picker label. */
+  approvePickerLabel: '审批模型',
+  /** Approval route explanation. */
+  approveUsage: '开启但没有完整 provider/model route 时保持原行为（审查模型继续继承会话或使用插件自身的 reviewProvider/reviewModel 配置）。建议选择便宜快速的模型；审查裁决只用于审批，不写入会话历史。',
   /** Model picker trigger placeholder. */
   pickerPlaceholder: '选择提供商和模型',
   /** Model picker empty state. */
@@ -95,6 +105,11 @@ export const en: Record<AuxiliaryKey, string> = {
   compactToggle: 'Enable auxiliary compaction route',
   compactPickerLabel: 'Compaction model',
   compactUsage: 'An enabled feature without a complete provider/model route keeps the existing pass-through behavior. `engine` has no third model picker; when enabled, the compression engine reuses this compact route.',
+  approveTitle: 'Approval model',
+  approveDescription: 'Hookup for the dsh-command-approve-for-me plugin: once that plugin is installed and review mode is active, its approval reviews run on the dedicated model selected here instead of inheriting the session\'s main model.',
+  approveToggle: 'Enable approval-model routing',
+  approvePickerLabel: 'Approval model',
+  approveUsage: 'An enabled feature without a complete provider/model route keeps the original behavior (the reviewer keeps inheriting the session or the plugin\'s own reviewProvider/reviewModel config). Prefer a cheap, fast model; the review verdict only decides approval and never enters the session history.',
   pickerPlaceholder: 'Choose a provider and model',
   pickerEmpty: 'No selectable models are available.',
   pickerUnavailable: 'Saved route is currently unavailable',

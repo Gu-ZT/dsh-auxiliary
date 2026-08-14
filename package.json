@@ -1,6 +1,6 @@
 {
   "name": "dsh-auxiliary",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "DeepSeek Harness plugin that uses configured model providers for image analysis and context compaction.",
   "type": "module",
   "main": "lib/index.js",

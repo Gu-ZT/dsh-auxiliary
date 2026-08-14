@@ -59,6 +59,8 @@ export interface AuxSettings {
   vision: AuxFeatureSettings;
   /** `compact.enabled` plus the compact provider/model route. */
   compact: AuxFeatureSettings;
+  /** `approve.enabled` plus the approval-reviewer provider/model route. */
+  approve: AuxFeatureSettings;
   /** Namespace revision for the next optimistic-concurrency write. */
   revision?: number;
   /** Whether the namespace is exposed by the current Host. */
@@ -71,11 +73,12 @@ export interface AuxSettings {
 export interface AuxSettingsSnapshot {
   vision: AuxFeatureSettings;
   compact: AuxFeatureSettings;
+  approve: AuxFeatureSettings;
   revision: number;
 }
 
 /** Feature names accepted by the atomic auxiliary settings writer. */
-export type AuxFeature = 'vision' | 'compact';
+export type AuxFeature = 'vision' | 'compact' | 'approve';
 
 /** Draft shape submitted by one feature card. */
 export interface AuxFeatureDraft extends AuxRoute {
@@ -267,6 +270,11 @@ interface AuxNamespaceValue {
     provider?: string;
     model?: string;
   };
+  approve?: {
+    enabled?: boolean;
+    provider?: string;
+    model?: string;
+  };
 }
 
 /** Read the schema-resolved auxiliary value from a wire namespace view. */
@@ -289,6 +297,11 @@ function snapshotOf(view: SettingsNamespaceView): AuxSettingsSnapshot {
       provider: value.compact?.provider,
       model: value.compact?.model,
     },
+    approve: {
+      enabled: value.approve?.enabled ?? false,
+      provider: value.approve?.provider,
+      model: value.approve?.model,
+    },
     revision: view.revision,
   };
 }
@@ -301,6 +314,7 @@ export async function loadAuxSettings(api: IApiClient): Promise<AuxSettings> {
     return {
       vision: { enabled: true },
       compact: { enabled: false },
+      approve: { enabled: false },
       available: false,
       writable: value.writable,
     };
@@ -358,13 +372,21 @@ export async function saveAuxFeature(
         enabled: normalized.enabled,
       },
     }
-    : {
-      compact: {
-        enabled: normalized.enabled,
-        provider: normalized.provider,
-        model: normalized.model,
-      },
-    };
+    : feature === 'approve'
+      ? {
+        approve: {
+          enabled: normalized.enabled,
+          provider: normalized.provider,
+          model: normalized.model,
+        },
+      }
+      : {
+        compact: {
+          enabled: normalized.enabled,
+          provider: normalized.provider,
+          model: normalized.model,
+        },
+      };
   const view = valueOf(await api.settings.update({
     ns: 'dsh-auxiliary',
     patch,

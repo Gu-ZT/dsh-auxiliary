@@ -53,6 +53,11 @@ const Config = z.object({
     provider: z.string(),
     model: z.string()
   }),
+  approve: z.object({
+    enabled: z.boolean().default(false).description('When dsh-command-approve-for-me is installed, route its review-mode approval calls to a dedicated model.'),
+    provider: z.string(),
+    model: z.string()
+  }),
   engine: z.object({
     enabled: z.boolean().default(false),
     thresholdRatio: z.number().step(0.01).min(0.01).max(0.99).default(0.8),
@@ -91,6 +96,13 @@ export interface ResolvedCompactConfig {
   readonly model: string;
 }
 
+/** Resolved approval-reviewer routing policy (dsh-command-approve-for-me hookup). */
+export interface ResolvedApproveConfig {
+  readonly enabled: boolean;
+  readonly provider: string | undefined;
+  readonly model: string | undefined;
+}
+
 /** Resolved auxiliary compression-engine policy. */
 export interface ResolvedEngineConfig {
   readonly enabled: boolean;
@@ -108,6 +120,7 @@ export interface ResolvedPluginConfig {
   readonly vision: ResolvedVisionConfig;
   readonly tool: ResolvedToolConfig;
   readonly compact: ResolvedCompactConfig;
+  readonly approve: ResolvedApproveConfig;
   readonly engine: ResolvedEngineConfig;
 }
 
@@ -116,6 +129,7 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const vision = config.vision ?? {};
   const tool = config.tool ?? {};
   const compact = config.compact ?? {};
+  const approve = config.approve ?? {};
   const engine = config.engine ?? {};
 
   const visionProvider = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
@@ -128,6 +142,12 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const compactModel = typeof compact.model === 'string' ? compact.model : '';
   if (Boolean(compactProvider) !== Boolean(compactModel)) {
     throw new Error('dsh-auxiliary: compact.provider and compact.model must be set together');
+  }
+
+  const approveProvider = typeof approve.provider === 'string' && approve.provider.length > 0 ? approve.provider : undefined;
+  const approveModel = typeof approve.model === 'string' && approve.model.length > 0 ? approve.model : undefined;
+  if (Boolean(approveProvider) !== Boolean(approveModel)) {
+    throw new Error('dsh-auxiliary: approve.provider and approve.model must be set together');
   }
 
   const thresholdRatio = engine.thresholdRatio ?? 0.8;
@@ -152,6 +172,11 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
       enabled: compact.enabled ?? false,
       provider: compactProvider,
       model: compactModel
+    },
+    approve: {
+      enabled: approve.enabled ?? false,
+      provider: approveProvider,
+      model: approveModel
     },
     engine: {
       enabled: engine.enabled ?? false,
