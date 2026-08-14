@@ -19,6 +19,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import { AuxiliarySection, type AuxiliarySectionProps } from './AuxiliarySection.js';
 import { en, zh, type AuxiliaryKey } from './locales.js';
+import { startModelCatalogInjection } from './modelCatalogInject.js';
 
 /** Locale namespace this plugin owns. */
 const NS = 'dsh-auxiliary';
@@ -50,6 +51,11 @@ export function apply(ctx: ClientContext): void {
     api: connection.api,
     t,
   });
+
+  ctx.effect(
+    () => startModelCatalogInjection(connection.api, t),
+    'dsh-auxiliary: model catalog image-input injection',
+  );
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',

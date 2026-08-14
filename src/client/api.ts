@@ -81,7 +81,7 @@ export interface AuxFeatureDraft extends AuxRoute {
 }
 
 /** Additional local validation code used before an RPC write. */
-type LocalAuxiliaryErrorCode = 'invalid-route';
+type LocalAuxiliaryErrorCode = 'invalid-route' | 'image-capability-unavailable';
 
 /** Structured error raised by an auxiliary API operation. */
 export class AuxiliaryApiError extends Error {
@@ -124,6 +124,22 @@ export async function loadProviders(api: IApiClient): Promise<ProviderOption[]> 
   }));
 }
 
+/** One user-editable llm-pi-ai provider route, with its catalog display name. */
+export interface PiAiProviderRef {
+  /** Provider route key (`lanqin-gpt`, `anvilcraft-ai`, …). */
+  id: string;
+  /** Display name shown by the Models catalog card header. */
+  name: string;
+}
+
+/** Every provider route whose models live in the user-editable llm-pi-ai namespace. */
+export async function loadPiAiProviders(api: IApiClient): Promise<PiAiProviderRef[]> {
+  const value = valueOf(await api.llm.providers({}));
+  return value.providers
+    .filter((entry: ConfigurableProviderView) => entry.settingsNs === 'llm-pi-ai')
+    .map((entry: ConfigurableProviderView) => ({ id: entry.provider, name: entry.displayName }));
+}
+
 /**
  * Load the model catalog while retaining its provider groups and failures.
  * Inactive provider routes remain out of the selectable groups even if their
@@ -140,6 +156,97 @@ export async function loadModels(api: IApiClient): Promise<ModelCatalog> {
     groups: value.groups.filter((group: ModelProviderGroup) => activeProviders.has(group.id)),
     failures: value.failures,
   };
+}
+
+/** Image-input declaration of one editable llm-pi-ai model row. */
+export interface ModelImageCapability {
+  /** Whether the provider has a user-owned llm-pi-ai model row for this id. */
+  available: boolean;
+  /** Whether the model currently declares image input. */
+  supported: boolean;
+  /** Whether the Host settings provider accepts writes. */
+  writable: boolean;
+}
+
+/** Narrow an unknown settings value to a plain record. */
+function recordOf(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+/** Read a modality declaration without admitting arbitrary wire values. */
+function modalitiesOf(value: unknown): readonly string[] | undefined {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+    ? value
+    : undefined;
+}
+
+/** A located user-owned model row inside the llm-pi-ai namespace. */
+interface PiAiModelLocation {
+  namespace: SettingsNamespaceView;
+  models: Array<Record<string, unknown>>;
+  modelIndex: number;
+}
+
+/** Locate the user-owned model row for one provider/model pair. */
+function locatePiAiModel(namespace: SettingsNamespaceView, provider: string, model: string): PiAiModelLocation | undefined {
+  const providers = recordOf(recordOf(namespace.user)?.providers);
+  const providerProfile = providers === undefined ? undefined : recordOf(providers[provider]);
+  const rawModels = providerProfile?.models;
+  if (!Array.isArray(rawModels)) return undefined;
+  const models = rawModels.map(recordOf);
+  if (models.some((entry) => entry === undefined)) return undefined;
+  const typedModels = models as Array<Record<string, unknown>>;
+  const modelIndex = typedModels.findIndex((entry) => entry.id === model);
+  if (modelIndex < 0) return undefined;
+  return { namespace, models: typedModels, modelIndex };
+}
+
+/** Read the effective image-input declaration of one editable llm-pi-ai model. */
+export async function loadModelImageCapability(api: IApiClient, provider: string, model: string): Promise<ModelImageCapability> {
+  const settings = valueOf(await api.settings.describe({}));
+  const namespace = settings.namespaces.find((entry) => entry.ns === 'llm-pi-ai');
+  const location = namespace === undefined ? undefined : locatePiAiModel(namespace, provider, model);
+  if (location === undefined) return { available: false, supported: false, writable: settings.writable };
+
+  const providers = recordOf(recordOf(location.namespace.value)?.providers);
+  const resolvedProfile = providers === undefined ? undefined : recordOf(providers[provider]);
+  const resolvedModels = Array.isArray(resolvedProfile?.models)
+    ? resolvedProfile.models.map(recordOf).filter((entry): entry is Record<string, unknown> => entry !== undefined)
+    : [];
+  const resolvedModel = resolvedModels.find((entry) => entry.id === model) ?? location.models[location.modelIndex];
+  const modelInput = modalitiesOf(resolvedModel?.input);
+  const defaultInput = modalitiesOf(resolvedProfile?.defaultInput);
+  const supported = (modelInput !== undefined && modelInput.length > 0 ? modelInput : defaultInput)?.includes('image') ?? false;
+  return { available: true, supported, writable: settings.writable };
+}
+
+/** Write one editable llm-pi-ai model's image-input declaration, preserving sibling rows. */
+export async function saveModelImageCapability(
+  api: IApiClient,
+  provider: string,
+  model: string,
+  supported: boolean,
+): Promise<ModelImageCapability> {
+  const settings = valueOf(await api.settings.describe({}));
+  const namespace = settings.namespaces.find((entry) => entry.ns === 'llm-pi-ai');
+  const location = namespace === undefined ? undefined : locatePiAiModel(namespace, provider, model);
+  if (location === undefined || !settings.writable) {
+    throw new AuxiliaryApiError(
+      'image-capability-unavailable',
+      'dsh-auxiliary: the selected model does not expose an editable llm-pi-ai model row',
+    );
+  }
+  const models = location.models.map((entry, index) => index === location.modelIndex
+    ? { ...entry, input: supported ? ['text', 'image'] : ['text'] }
+    : entry);
+  valueOf(await api.settings.update({
+    ns: 'llm-pi-ai',
+    patch: { providers: { [provider]: { models } } },
+    expectedRevision: location.namespace.revision,
+  }));
+  return { available: true, supported, writable: true };
 }
 
 interface AuxNamespaceValue {

@@ -29,6 +29,12 @@ export const zh = {
   visionToggle: '启用 inspect_image',
   /** Vision picker label. */
   visionPickerLabel: '视觉模型（需支持图片输入）',
+  /** Injected model-catalog checkbox label. */
+  imageCapabilityToggle: '允许图片输入',
+  /** Injected model-catalog checkbox explanation. */
+  imageCapabilityDescription: '仅在上游模型确实支持图片时启用。',
+  /** Loading state of an injected model-catalog checkbox. */
+  imageCapabilityLoading: '正在读取图片输入声明…',
   /** Exact distinction between route selection and model capabilities. */
   visionUsage: '此路线供 inspect_image 读取 Host 上的本地图片。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
   /** Compaction feature card heading. */
@@ -77,6 +83,9 @@ export const en: Record<AuxiliaryKey, string> = {
   visionDescription: 'Controls the `inspect_image` tool and its vision model. Enabling it without a selected model remains valid; a tool call reports that the vision route is missing.',
   visionToggle: 'Enable inspect_image',
   visionPickerLabel: 'Vision model (must support image input)',
+  imageCapabilityToggle: 'Allow image input',
+  imageCapabilityDescription: 'Enable only if the upstream model accepts images.',
+  imageCapabilityLoading: 'Reading the image-input declaration…',
   visionUsage: 'This route lets inspect_image read local images on the Host. Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
   compactTitle: 'Context compaction',
   compactDescription: 'Controls whether `purpose: compaction` summaries use the independent compact model route.',
