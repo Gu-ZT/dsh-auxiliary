@@ -57,6 +57,7 @@ All fields are optional; defaults are shown.
   config:
     vision:
       maxTokens: 2048                      # inspect_image output cap (provider/model written by the settings page)
+      handoff: true                        # text-only main models may reference chat images via describe_image
     tool:
       enabled: true                        # register the inspect_image tool
       maxImageBytes: 10485760              # per-file size cap
@@ -95,9 +96,33 @@ both `inspect_image` and the main chat composer use the same capability fact.
 Enable it only when the upstream endpoint actually accepts images; the
 declaration cannot add vision support to a text-only model.
 
-To use the selected vision route, put the image at a Host-readable
-workspace-relative or absolute path, then ask the agent to run `inspect_image`,
-for example: `Use inspect_image to analyze screenshots/error.png`.
+To use the selected vision route with a local file, put the image at a
+Host-readable workspace-relative or absolute path, then ask the agent to run
+`inspect_image`, for example: `Use inspect_image to analyze
+screenshots/error.png`.
+
+### Image handoff (chat images with a text-only main model)
+
+When **Image handoff** (`vision.handoff`, default on) is enabled and a vision
+provider/model is selected, attaching an image to a chat whose main model is
+text-only no longer fails. Instead:
+
+1. The image admission preflight is bypassed for models that declare no image
+   input (a runtime wrapper on `ctx.llm.resolveModelInfo` claims image input
+   while the handoff is active — the model catalog and the per-model checkboxes
+   are unaffected, because they read the settings document directly).
+2. A listener on the official `llm/stream` waterfall replaces the image block
+   with a text reference `[image: {"attachmentId":…,"mediaType":…}]` before the
+   adapter sees it, so the text-only model never receives an image payload
+   (vision-route calls such as `inspect_image` are left untouched).
+3. The system prompt tells the main model to call `describe_image` with the
+   exact JSON from the reference; the tool reads the stored attachment bytes
+   and asks the selected vision model, returning a text description that is
+   injected into the conversation.
+
+The reference is plain text, so it survives restarts, forks, and replays.
+Disable `vision.handoff` to restore the original rejection behavior. Both
+seams are plugin-side and leave every core package unmodified.
 
 ### Notes
 

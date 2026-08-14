@@ -29,6 +29,8 @@ export const zh = {
   visionToggle: '启用 inspect_image',
   /** Vision picker label. */
   visionPickerLabel: '视觉模型（需支持图片输入）',
+  /** Image handoff switch label. */
+  visionHandoff: '主模型不支持图片时，聊天图片以引用形式发送，由 describe_image 转交视觉模型获取内容',
   /** Injected model-catalog checkbox label. */
   imageCapabilityToggle: '允许图片输入',
   /** Injected model-catalog checkbox explanation. */
@@ -36,7 +38,7 @@ export const zh = {
   /** Loading state of an injected model-catalog checkbox. */
   imageCapabilityLoading: '正在读取图片输入声明…',
   /** Exact distinction between route selection and model capabilities. */
-  visionUsage: '此路线供 inspect_image 读取 Host 上的本地图片。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
+  visionUsage: '此路线供 inspect_image 与 describe_image 使用：前者读取 Host 上的本地图片，后者读取聊天中附加的图片（主模型不支持图片时以 [image: …] 引用呈现，主模型会主动调用 describe_image 获取内容并注入上下文）。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
   /** Compaction feature card heading. */
   compactTitle: '上下文压缩',
   /** Compaction feature card explanation. */
@@ -83,10 +85,11 @@ export const en: Record<AuxiliaryKey, string> = {
   visionDescription: 'Controls the `inspect_image` tool and its vision model. Enabling it without a selected model remains valid; a tool call reports that the vision route is missing.',
   visionToggle: 'Enable inspect_image',
   visionPickerLabel: 'Vision model (must support image input)',
+  visionHandoff: 'When the main model is text-only, chat images are sent as references and describe_image hands them to the vision model for their content',
   imageCapabilityToggle: 'Allow image input',
   imageCapabilityDescription: 'Enable only if the upstream model accepts images.',
   imageCapabilityLoading: 'Reading the image-input declaration…',
-  visionUsage: 'This route lets inspect_image read local images on the Host. Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
+  visionUsage: 'This route serves inspect_image and describe_image: the former reads local images on the Host, the latter reads images attached to the chat (when the main model is text-only they appear as [image: …] references, and the main model calls describe_image to fetch their content into the context). Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
   compactTitle: 'Context compaction',
   compactDescription: 'Controls whether `purpose: compaction` summaries use the independent compact model route.',
   compactToggle: 'Enable auxiliary compaction route',

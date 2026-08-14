@@ -49,6 +49,8 @@ export interface AuxRoute {
 /** One independently configurable auxiliary feature. */
 export interface AuxFeatureSettings extends AuxRoute {
   enabled: boolean;
+  /** Image handoff toggle; only meaningful for the vision feature. */
+  handoff?: boolean;
 }
 
 /** Complete decoded auxiliary namespace state used by the settings page. */
@@ -78,6 +80,8 @@ export type AuxFeature = 'vision' | 'compact';
 /** Draft shape submitted by one feature card. */
 export interface AuxFeatureDraft extends AuxRoute {
   enabled: boolean;
+  /** Image handoff toggle; only the vision card edits it. */
+  handoff?: boolean;
 }
 
 /** Additional local validation code used before an RPC write. */
@@ -253,6 +257,7 @@ interface AuxNamespaceValue {
   vision?: {
     provider?: string;
     model?: string;
+    handoff?: boolean;
   };
   tool?: {
     enabled?: boolean;
@@ -277,6 +282,7 @@ function snapshotOf(view: SettingsNamespaceView): AuxSettingsSnapshot {
       enabled: value.tool?.enabled ?? true,
       provider: value.vision?.provider,
       model: value.vision?.model,
+      handoff: value.vision?.handoff ?? true,
     },
     compact: {
       enabled: value.compact?.enabled ?? false,
@@ -313,7 +319,7 @@ function routeText(value: string | undefined): string {
 }
 
 /** Normalize and validate a feature draft before constructing its patch. */
-function normalizedDraft(draft: AuxFeatureDraft): { enabled: boolean; provider: string; model: string } {
+function normalizedDraft(draft: AuxFeatureDraft): { enabled: boolean; provider: string; model: string; handoff?: boolean } {
   const provider = routeText(draft.provider);
   const model = routeText(draft.model);
   if (Boolean(provider) !== Boolean(model)) {
@@ -322,7 +328,12 @@ function normalizedDraft(draft: AuxFeatureDraft): { enabled: boolean; provider: 
       'dsh-auxiliary: provider and model must be selected together',
     );
   }
-  return { enabled: draft.enabled, provider, model };
+  return {
+    enabled: draft.enabled,
+    provider,
+    model,
+    ...(draft.handoff === undefined ? {} : { handoff: draft.handoff }),
+  };
 }
 
 /**
@@ -341,6 +352,7 @@ export async function saveAuxFeature(
       vision: {
         provider: normalized.provider,
         model: normalized.model,
+        ...(normalized.handoff === undefined ? {} : { handoff: normalized.handoff }),
       },
       tool: {
         enabled: normalized.enabled,

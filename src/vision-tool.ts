@@ -48,6 +48,35 @@ function parseArgs(args: unknown): InspectImageArgs {
   return { path: value.path, question: value.question };
 }
 
+/** Parse and validate the `ref` argument of a `describe_image` call. */
+function parseImageRef(raw: string): ImageAttachmentRef {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new ToolArgsError(['describe_image: "ref" must be the exact JSON from the [image: ...] reference in the conversation']);
+  }
+  const ref = value as { attachmentId?: unknown; mediaType?: unknown; bytes?: unknown; width?: unknown; height?: unknown; name?: unknown } | null;
+  if (
+    ref === null || typeof ref !== 'object'
+    || typeof ref.attachmentId !== 'string' || ref.attachmentId.length === 0
+    || typeof ref.mediaType !== 'string'
+    || typeof ref.bytes !== 'number' || !Number.isSafeInteger(ref.bytes)
+    || typeof ref.width !== 'number' || !Number.isInteger(ref.width) || ref.width <= 0
+    || typeof ref.height !== 'number' || !Number.isInteger(ref.height) || ref.height <= 0
+  ) {
+    throw new ToolArgsError(['describe_image: "ref" must be a complete image reference (attachmentId, mediaType, bytes, width, height)']);
+  }
+  return {
+    attachmentId: ref.attachmentId as ImageAttachmentRef['attachmentId'],
+    mediaType: ref.mediaType as ImageAttachmentRef['mediaType'],
+    bytes: ref.bytes,
+    width: ref.width,
+    height: ref.height,
+    ...(typeof ref.name === 'string' && ref.name.length > 0 ? { name: ref.name } : {})
+  };
+}
+
 /** Derive the accepted media type from a file path's extension. */
 function mediaTypeForPath(path: string): ImageMediaType {
   const extension = (path.split('.').pop() ?? '').toLowerCase();
@@ -63,6 +92,20 @@ function basename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
 }
 
+/** Result of one vision-model call: assembled text plus a truncation flag. */
+interface VisionAnswer {
+  /** Concatenated text blocks produced by the model. */
+  text: string;
+  /** Whether the model hit the configured maxTokens before finishing. */
+  truncated: boolean;
+}
+
+/** Extract the assembled text blocks of one call. */
+function blocksText(assembler: BlockAssembler): string {
+  return assembler.blocks().filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+    .map((block) => block.text).join(' ');
+}
+
 /** Run one one-shot call through the selected vision route and return its text answer. */
 async function askVision(
   ctx: Context,
@@ -70,11 +113,12 @@ async function askVision(
   attachment: ImageAttachmentRef,
   question: string,
   signal: AbortSignal,
-  sessionId: GenerateOptions['sessionId']
-): Promise<string> {
+  sessionId: GenerateOptions['sessionId'],
+  toolName: string
+): Promise<VisionAnswer> {
   const vision = get().vision;
   if (vision.provider === undefined || vision.model === undefined) {
-    throw new Error('inspect_image: no vision provider/model is selected; select both in dsh-auxiliary settings before using this tool');
+    throw new Error(`${toolName}: no vision provider/model is selected; select both in dsh-auxiliary settings before using this tool`);
   }
   const messages = [
     createUserMessage({
@@ -89,7 +133,7 @@ async function askVision(
   try {
     const modelInfo = await ctx.llm.resolveModelInfo(vision.provider, vision.model, timeout.signal);
     if (modelInfo.inputModalities !== undefined && !modelInfo.inputModalities.includes('image')) {
-      throw new Error(`inspect_image: selected model "${vision.provider}/${vision.model}" does not support image input`);
+      throw new Error(`${toolName}: selected model "${vision.provider}/${vision.model}" does not support image input`);
     }
     const assembler = new BlockAssembler();
     for await (const chunk of ctx.llm.stream(deepFreeze({
@@ -104,27 +148,24 @@ async function askVision(
     }
     const finish = assembler.finish;
     if (finish.kind === 'error' || finish.kind === 'aborted') {
-      throw new Error(`inspect_image: vision model call failed (${finish.failure.code}): ${finish.failure.message}`);
-    }
-    if (finish.kind === 'max-tokens') {
-      throw new Error('inspect_image: vision model output exceeded the configured maxTokens');
+      throw new Error(`${toolName}: vision model call failed (${finish.failure.code}): ${finish.failure.message}`);
     }
     if (finish.kind === 'tool-calls') {
-      throw new Error('inspect_image: vision model unexpectedly requested a tool');
+      throw new Error(`${toolName}: vision model unexpectedly requested a tool`);
     }
-    const text = assembler.blocks().filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
-      .map((block) => block.text).join(' ');
+    const text = blocksText(assembler);
     if (text.trim().length === 0) {
-      throw new Error('inspect_image: vision model produced no text');
+      throw new Error(`${toolName}: vision model produced no text${finish.kind === 'max-tokens' ? ' before hitting maxTokens' : ''}`);
     }
-    return text;
+    return { text, truncated: finish.kind === 'max-tokens' };
   } finally {
     timeout[Symbol.dispose]();
   }
 }
 
 /**
- * Register the `inspect_image` tool plus its system-prompt guidance.
+ * Register the `inspect_image` and `describe_image` tools plus system-prompt
+ * guidance.
  *
  * @returns a disposer that removes both registrations made by this function.
  */
@@ -132,7 +173,7 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
   const disposePrompt = ctx.systemPrompt.section({
     name: 'tool:inspect_image',
     order: 160,
-    text: 'Use the inspect_image tool to analyze local image files (screenshots, photos, diagrams) with the selected vision model. Pass the file path and an optional question; the answer comes back as text.'
+    text: 'Use the inspect_image tool to analyze local image files (screenshots, photos, diagrams) with the selected vision model. Pass the file path and an optional question; the answer comes back as text. When the conversation contains an image reference like [image: {...}], the image was attached to the chat: call describe_image with the exact JSON from that reference to get the image content as text.'
   });
   const disposeTool = ctx.tools.register(defineTool({
     name: 'inspect_image',
@@ -154,10 +195,11 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
         additionalProperties: false,
         properties: {
           content: { type: 'string' },
-          path: { type: 'string' }
+          path: { type: 'string' },
+          truncated: { type: 'boolean' }
         }
       },
-      render: (_args, value) => [{ type: 'text', text: value.content ?? '' }],
+      render: (_args, value) => [{ type: 'text', text: value.truncated ? `${value.content ?? ''}\n\n[note: the vision model output was truncated at maxTokens]` : value.content ?? '' }],
       presentationMeta: (_args, value) => value
     },
     timeoutMs: get().tool.timeoutMs,
@@ -182,13 +224,45 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
         mediaType: mediaTypeForPath(input.path),
         name: basename(input.path)
       });
-      const answer = await askVision(ctx, get, ref, input.question ?? DEFAULT_QUESTION, exec.signal, exec.agent?.session.id);
-      return { content: answer, path: input.path };
+      const answer = await askVision(ctx, get, ref, input.question ?? DEFAULT_QUESTION, exec.signal, exec.agent?.session.id, 'inspect_image');
+      return { content: answer.text, path: input.path, ...(answer.truncated ? { truncated: true } : {}) };
+    }
+  }));
+  const disposeDescribe = ctx.tools.register(defineTool({
+    name: 'describe_image',
+    description: 'Get the content of an image attached to this chat as a text reference. The conversation contains a reference like [image: {...}]; pass the exact JSON inside it. Returns the selected vision model\'s answer as text, which becomes part of the conversation.',
+    parameters: {
+      ref: {
+        type: 'string',
+        required: true,
+        description: 'The exact JSON from the [image: ...] reference in the conversation (attachmentId, mediaType, bytes, width, height).'
+      }
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          content: { type: 'string' },
+          name: { type: 'string' },
+          truncated: { type: 'boolean' }
+        }
+      },
+      render: (_args, value) => [{ type: 'text', text: value.truncated ? `${value.content ?? ''}\n\n[note: the vision model output was truncated at maxTokens]` : value.content ?? '' }],
+      presentationMeta: (_args, value) => value
+    },
+    timeoutMs: get().tool.timeoutMs,
+    async execute(args, exec) {
+      const ref = parseImageRef(args.ref);
+      const stored = await ctx.attachments.readImage(ref, exec.signal);
+      const answer = await askVision(ctx, get, ref, DEFAULT_QUESTION, exec.signal, exec.agent?.session.id, 'describe_image');
+      return { content: answer.text, name: stored.ref.name ?? ref.attachmentId, ...(answer.truncated ? { truncated: true } : {}) };
     }
   }));
 
   return () => {
     disposeTool();
+    disposeDescribe();
     disposePrompt();
   };
 }

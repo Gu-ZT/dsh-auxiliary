@@ -13,7 +13,7 @@ import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout';
 /** Stable plugin id recorded with plugin-sourced messages and tool guidance. */
 export const PLUGIN_NAME = 'dsh-auxiliary';
 
-export const DEFAULT_VISION_MAX_TOKENS = 2048;
+export const DEFAULT_VISION_MAX_TOKENS = 4096;
 export const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_VISION_TOOL_TIMEOUT_MS = 120000;
 export const DEFAULT_ENGINE_MAX_TOKENS = 8192;
@@ -40,7 +40,8 @@ const Config = z.object({
   vision: z.object({
     provider: z.string().description('Select an already-configured provider route for inspect_image.'),
     model: z.string().description('Select a model from the selected provider route for inspect_image.'),
-    maxTokens: z.number().step(1).min(1).default(DEFAULT_VISION_MAX_TOKENS)
+    maxTokens: z.number().step(1).min(1).default(DEFAULT_VISION_MAX_TOKENS),
+    handoff: z.boolean().default(true).description('When the main model is text-only, allow chat images as references and let it fetch their content via describe_image.')
   }),
   tool: z.object({
     enabled: z.boolean().default(true),
@@ -72,6 +73,8 @@ export interface ResolvedVisionConfig {
   readonly provider: string | undefined;
   readonly model: string | undefined;
   readonly maxTokens: number;
+  /** Image handoff: text-only main models may reference chat images via describe_image. */
+  readonly handoff: boolean;
 }
 
 /** Resolved `inspect_image` tool policy. */
@@ -137,7 +140,8 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
     vision: {
       provider: visionProvider,
       model: visionModel,
-      maxTokens: vision.maxTokens ?? DEFAULT_VISION_MAX_TOKENS
+      maxTokens: vision.maxTokens ?? DEFAULT_VISION_MAX_TOKENS,
+      handoff: vision.handoff ?? true
     },
     tool: {
       enabled: tool.enabled ?? true,

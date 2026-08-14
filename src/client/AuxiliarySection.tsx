@@ -170,6 +170,8 @@ interface FeatureCardProps {
   toggleLabel: string;
   pickerLabel: string;
   usage: string;
+  /** Optional second checkbox label; only the vision card passes it. */
+  handoffLabel?: string;
   initial: AuxFeatureSettings;
   groups: ModelCatalog['groups'];
   disabled: boolean;
@@ -185,6 +187,7 @@ function FeatureCard({
   toggleLabel,
   pickerLabel,
   usage,
+  handoffLabel,
   initial,
   groups,
   disabled,
@@ -206,6 +209,12 @@ function FeatureCard({
 
   const updateRoute = (route: { provider?: string; model?: string }): void => {
     setDraft((previous) => ({ ...previous, ...route }));
+    setSaved(false);
+    setError(undefined);
+  };
+
+  const updateHandoff = (handoff: boolean): void => {
+    setDraft((previous) => ({ ...previous, handoff }));
     setSaved(false);
     setError(undefined);
   };
@@ -239,6 +248,18 @@ function FeatureCard({
         />
         <span>{toggleLabel}</span>
       </label>
+      {handoffLabel !== undefined ? (
+        <label style={toggleStyle}>
+          <input
+            type="checkbox"
+            checked={draft.handoff ?? true}
+            disabled={locked}
+            style={checkboxStyle}
+            onChange={(event) => { updateHandoff(event.target.checked); }}
+          />
+          <span>{handoffLabel}</span>
+        </label>
+      ) : null}
       <label style={fieldStyle}>
         <span style={labelStyle}>{pickerLabel}</span>
         <ModelPicker
@@ -386,6 +407,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             toggleLabel={t('visionToggle')}
             pickerLabel={t('visionPickerLabel')}
             usage={t('visionUsage')}
+            handoffLabel={t('visionHandoff')}
             initial={settings.vision}
             groups={catalog.groups}
             disabled={cardsDisabled}

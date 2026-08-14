@@ -57,6 +57,7 @@ npm install dsh-auxiliary
   config:
     vision:
       maxTokens: 2048                      # inspect_image 输出上限（provider/model 由设置页写入）
+      handoff: true                        # 主模型不支持图片时，聊天图片以引用形式发送并由 describe_image 转交
     tool:
       enabled: true                        # 注册 inspect_image 工具
       maxImageBytes: 10485760              # 单文件大小上限
@@ -83,6 +84,16 @@ npm install dsh-auxiliary
 对于用户配置的 `llm-pi-ai` 模型，请在 **设置 → 模型 → 提供商 → 自定义设置 → 模型目录 → 模型设置** 中声明图片能力。勾选 **允许图片输入** 时写入模型的标准 `input: [text, image]` 声明，取消勾选时写入 `input: [text]`；`inspect_image` 与主聊天附件校验会读取同一份能力声明。仅应在上游接口确实接受图片时启用，该声明不能让纯文本模型获得视觉能力。
 
 若要使用设置页选择的视觉模型，请把图片放在 Host 可读取的工作区相对路径或绝对路径，再让智能体调用 `inspect_image`，例如：`请调用 inspect_image 分析 screenshots/error.png`。
+
+### 图片转交（主模型为纯文本时的聊天图片）
+
+**图片转交**（`vision.handoff`，默认开启）启用且已选择视觉提供商/模型后，在聊天中附加图片不再因为主模型不支持图片而失败，而是按以下流程工作：
+
+1. 对未声明图片输入的模型，图片受理预检会被放行（运行时包装 `ctx.llm.resolveModelInfo`，在转交启用期间声明图片输入；模型目录与按模型的能力复选框不受影响，因为它们直接读取设置文档）。
+2. 监听官方 `llm/stream` waterfall：在适配器看到图片之前，把图片块替换成文本引用 `[image: {"attachmentId":…,"mediaType":…}]`，纯文本主模型永远不会收到图片负载（`inspect_image` 等视觉路由调用不受影响）。
+3. 系统提示引导主模型用引用中的 JSON 调用 `describe_image`；该工具读取已存储的附件字节并询问所选视觉模型，返回的文字描述被注入到对话中。
+
+引用是纯文本，因此重启、fork 与历史重放后依然可用。关闭 `vision.handoff` 可恢复原来的拒绝行为。两个挂接点都在插件内，核心包零修改。
 
 ### 说明
 

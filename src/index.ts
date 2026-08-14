@@ -12,11 +12,13 @@ import type { Context } from '@deepseek-ai/cordis';
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings';
 import { Config, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type ResolvedPluginConfig } from './config.js';
 import { registerVisionTool } from './vision-tool.js';
+import { registerImageHandoff } from './image-handoff.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
 
 export { Config, PLUGIN_NAME, resolvePluginConfig } from './config.js';
 export { registerVisionTool } from './vision-tool.js';
+export { registerImageHandoff } from './image-handoff.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
 
@@ -81,19 +83,41 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeVisionTool();
   };
 
+  let handoffDisposer: (() => void) | undefined;
+  const disposeHandoff = (): void => {
+    const disposer = handoffDisposer;
+    handoffDisposer = undefined;
+    disposer?.();
+  };
+  const reconcileHandoff = (): void => {
+    const resolvedConfig = resolved();
+    if (resolvedConfig.tool.enabled && resolvedConfig.vision.provider !== undefined && resolvedConfig.vision.model !== undefined) {
+      if (handoffDisposer === undefined) {
+        handoffDisposer = registerImageHandoff(ctx, resolved);
+      }
+      return;
+    }
+    disposeHandoff();
+  };
+
   ctx.effect(() => () => {
     disposeVisionTool();
-  }, 'dsh-auxiliary: vision tool lifecycle');
+    disposeHandoff();
+  }, 'dsh-auxiliary: vision tool and handoff lifecycle');
 
   installSettingsSection(ctx, NS, Config, config, {
     setSource: (source) => {
       current = source;
     },
-    onChange: reconcileVisionTool,
+    onChange: () => {
+      reconcileVisionTool();
+      reconcileHandoff();
+    },
     validate: resolvePluginConfig
   });
 
   reconcileVisionTool();
+  reconcileHandoff();
   installCompactRouter(ctx, resolved);
   if (resolved().engine.enabled) {
     installCompressionEngine(ctx, resolved);
