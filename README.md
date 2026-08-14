@@ -31,22 +31,23 @@ Image content uses the harness `image` content block (`ImageAttachmentRef`), com
 
 ## Installation
 
-The plugin is a plain cordis plugin (non-bundle). Add it to a DSH web profile, for example via the plugin manager or by adding the package to the profile bundle layer and listing it in the profile config:
+Copy the block below and paste it to your DSH agent (the assistant in this web
+GUI). The agent performs the install and verification for you — no manual npm
+or profile editing needed:
 
-```bash
-npm install dsh-auxiliary
+```text
+Install the dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `dsh-auxiliary`; use the GitHub source `github:Gu-ZT/dsh-auxiliary`, or `file:<path>` for local development.
+
+Steps:
+1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
+2. The package declares a `prepack` build script. If pnpm fails with `ERR_PNPM_IGNORED_BUILDS`, approve the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) and retry the add.
+3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `dsh-auxiliary` (`name: dsh-auxiliary`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
+4. Verify `node_modules/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
+5. Do not start the profile — install and verify only, then report what you changed.
 ```
 
-Then enable it in the profile plugin list (see [`examples/profile.yml`](examples/profile.yml)):
-
-```yaml
-- name: dsh-auxiliary
-  config:
-    tool:
-      enabled: true
-```
-
-Once enabled, add a provider and its models in the web **Models** page, then pick them under **Settings → Auxiliary Models** — no custom endpoint or API key is needed.
+Then open **Settings → Auxiliary Models** in the web UI to configure the
+routes.
 
 ## Configuration
 

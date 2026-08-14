@@ -31,22 +31,20 @@
 
 ## 安装
 
-本插件是普通 cordis 插件（非 bundle）。把它加入 DSH Web profile，例如通过插件管理器安装，或在 profile 的 bundle 层加入该包并在 profile 配置中引用：
+复制下面的内容，粘贴给 DSH Agent（本 Web GUI 中的助手）。由 Agent 帮你完成安装与验证，无需手动执行 npm 或编辑 profile 配置：
 
-```bash
-npm install dsh-auxiliary
+```text
+把 dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `dsh-auxiliary`；使用 GitHub 源 `github:Gu-ZT/dsh-auxiliary`，本地开发可用 `file:<路径>`。
+
+步骤：
+1. 添加插件依赖：`dsh plugin --profile <PROFILE> add dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
+2. 该包声明了 `prepack` 构建脚本。若 pnpm 报 `ERR_PNPM_IGNORED_BUILDS`，在 profile 的 `pnpm-workspace.yaml`（`allowBuilds`）中批准构建后重试。
+3. 确认 profile 的 `cordis.patch.yml` 中有 dsh-auxiliary 的 insert 条目（`name: dsh-auxiliary`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
+4. 验证 `node_modules/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
+5. 不要启动 profile——只安装并验证，然后报告你改动了什么。
 ```
 
-然后在 profile 插件列表中启用（见 [`examples/profile.yml`](examples/profile.yml)）：
-
-```yaml
-- name: dsh-auxiliary
-  config:
-    tool:
-      enabled: true
-```
-
-启用后，先在 Web 的「模型」页添加提供商及其模型，再到 **设置 → 辅助模型** 选择它们——无需配置自定义端点或 API 密钥。
+安装完成后，在 Web 的 **设置 → 辅助模型** 中配置各路由即可。
 
 ## 配置
 
