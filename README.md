@@ -181,6 +181,25 @@ process-local agent and their children keep inheriting the parent route.
 Prefer a cheap, fast model to control delegation cost. No external plugin is
 required.
 
+### Title model
+
+```yaml
+title:
+  enabled: true
+  provider: anvilcraft-ai
+  model: deepseek-chat
+```
+
+Session titles are issued by the `dsh-session-title-llm` provider, which has
+its own deployment-level `provider`/`model` config. When this feature is
+enabled with a complete route, every `purpose: 'session-title'` call is
+rerouted to the selected pair instead, leaving the provider's own config and
+the main session route untouched. The recognition uses the official
+`GenerateOptions.purpose` marker, so it cannot collide with agent-loop,
+compaction, or approval calls. Like the compaction router, the listener is
+always installed and is a pure pass-through until a complete route is
+configured.
+
 ### Notes
 
 - `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `deepseek-official` with a cheaper model (placeholders; replace with your actual provider route and model id).

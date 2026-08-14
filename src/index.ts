@@ -15,6 +15,7 @@ import { registerVisionTool } from './vision-tool.js';
 import { registerImageHandoff } from './image-handoff.js';
 import { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
 import { registerSubagentRouter } from './subagent-router.js';
+import { installTitleRouter, titleRoute } from './title-router.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
 
@@ -23,6 +24,7 @@ export { registerVisionTool } from './vision-tool.js';
 export { registerImageHandoff } from './image-handoff.js';
 export { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
 export { registerSubagentRouter } from './subagent-router.js';
+export { installTitleRouter, titleRoute } from './title-router.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
 
@@ -138,6 +140,10 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeSubagentRouter();
   };
 
+  // The title router mirrors the compaction router: always installed, but a
+  // pure pass-through until a complete route is configured.
+  const disposeTitleRouter = installTitleRouter(ctx, resolved);
+
   // Read-only state endpoint for the settings page; independent of the routing
   // feature because the card must render its "plugin not installed" notice even
   // when `approve.enabled` is off.
@@ -148,6 +154,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeHandoff();
     disposeApproveRouter();
     disposeSubagentRouter();
+    disposeTitleRouter();
     approveStateDisposer();
   }, 'dsh-auxiliary: vision tool, handoff, and approval-router lifecycle');
 

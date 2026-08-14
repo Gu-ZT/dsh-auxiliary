@@ -121,6 +121,17 @@ subagent:
 
 子代理默认继承父会话的模型路由。开启此功能且路由完整时，所有委派子代理——一次性 spawn/fork 委托、可续接子代理（含进程内冷恢复）——统一使用所选模型。插件监听 `agent/created`，对委派深度 > 0 的代理在其自身作用域上下文中安装 `agent/request` waterfall 监听；返回替换后的 `LlmCallConfig` 是 loop 官方的"切换"契约，变更的头快照与其他模型切换一样被记录。远程提供方（ACP）创建的子代理不经过本机代理注册，仍继承父会话。建议选择便宜快速的模型控制委派成本。此功能不需要任何外部插件。
 
+### 标题生成模型
+
+```yaml
+title:
+  enabled: true
+  provider: anvilcraft-ai
+  model: deepseek-chat
+```
+
+会话标题由 `dsh-session-title-llm` 提供方发起，其自带部署层 `provider`/`model` 配置。开启此功能且路由完整时，所有 `purpose: 'session-title'` 调用统一改走所选模型，不动提供方自身的配置与主会话路由。识别使用官方的 `GenerateOptions.purpose` 标记，不会与 agent-loop、压缩或审批调用混淆。与压缩路由一样，监听器常驻安装、路由不完整时纯透传。
+
 ### 说明
 
 - `compact.enabled` 只改路由 `purpose: 'compaction'` 的调用。`provider`/`model` 可指向任意已注册路由——例如 `deepseek-official` 配一个更便宜的模型（示例值，请替换为你实际配置的提供商路由 id 与模型 id）。

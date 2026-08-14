@@ -67,6 +67,12 @@ export const zh = {
   subagentToggle: '启用子代理模型',
   subagentPickerLabel: '子代理模型',
   subagentUsage: '开启后，所有委派子代理（spawn/fork 一次性委托与可续接子代理）统一使用所选模型，不再继承父会话；进程内冷恢复的子代理同样生效。远程提供方（ACP）创建的子代理不经过本机代理注册，仍继承父会话。建议选择便宜快速的模型以控制委派成本。',
+  /** Session-title routing card. */
+  titleTitle: '标题生成模型',
+  titleDescription: '为会话标题生成设置独立模型路由。',
+  titleToggle: '启用标题生成模型',
+  titlePickerLabel: '标题生成模型',
+  titleUsage: '开启后，会话标题生成调用（purpose: session-title）统一使用所选模型，不随主会话路由变化。标题由 dsh-session-title-llm 提供方发起，此设置仅覆盖其模型路由，不影响其部署层配置。建议选择便宜快速的模型；标题生成频率较低，成本影响很小。',
   /** Model picker trigger placeholder. */
   pickerPlaceholder: '选择提供商和模型',
   /** Model picker empty state. */
@@ -124,6 +130,11 @@ export const en: Record<AuxiliaryKey, string> = {
   subagentToggle: 'Enable subagent model',
   subagentPickerLabel: 'Subagent model',
   subagentUsage: 'When enabled, every delegated child (one-shot spawn/fork runs and continuable children) uses the selected model instead of inheriting the parent session; in-process cold-resumed children are covered too. Remote providers (ACP) never register a process-local agent and their children keep inheriting the parent route. Prefer a cheap, fast model to control delegation cost.',
+  titleTitle: 'Title model',
+  titleDescription: 'Set a dedicated model route for session-title generation.',
+  titleToggle: 'Enable title model',
+  titlePickerLabel: 'Title model',
+  titleUsage: 'When enabled, session-title generation calls (purpose: session-title) use the selected model instead of following the main session route. Titles are issued by the dsh-session-title-llm provider; this setting only overrides its model route and leaves its deployment-level config untouched. Prefer a cheap, fast model; titles are generated infrequently, so the cost impact is minimal.',
   pickerPlaceholder: 'Choose a provider and model',
   pickerEmpty: 'No selectable models are available.',
   pickerUnavailable: 'Saved route is currently unavailable',
