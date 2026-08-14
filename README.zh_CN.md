@@ -25,6 +25,7 @@
 | `inspect_image` 工具 | `ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section(...)` |
 | 压缩路由 | `ctx.on('llm/stream', ...)` waterfall 监听器 |
 | 压缩引擎 | 子类钩子 `BasicCompactionEngine.summarize()` |
+| 「辅助模型」设置页 | client 端 `settings.section` 插槽（`ctx.slots.register`） |
 
 图片内容使用 harness 的 `image` 内容块（`ImageAttachmentRef`），通过 `ctx.attachments` 抽象读写，适配器不接触任何具体存储后端。
 
@@ -90,6 +91,14 @@ API 密钥通过凭据服务（Web 的 Models 页面）或 `VISION_API_KEY` 环�
       auto: true
       compressPrompt: "..."                # 自定义压缩指令
 ```
+
+### 设置页：辅助模型
+
+插件自带一个 Web 设置分区（**设置 → 辅助模型**），列出「模型」页已配置的
+所有提供商，可从中选择一个提供商及其模型。保存后写入
+`vision.provider` + `vision.model`，此后 `inspect_image`（以及你启用的压缩
+路由）将走该提供商——无需自定义端点。未设置 `vision.provider` 时，原有的
+自定义端点模式（`baseURL` + `apiKeyEnv`）仍然可用。
 
 ### 说明
 

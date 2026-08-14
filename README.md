@@ -25,6 +25,7 @@ The plugin follows the standard DSH extension points documented in the [plugin d
 | `inspect_image` tool | `ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section(...)` |
 | Compaction routing | `ctx.on('llm/stream', ...)` waterfall listener |
 | Compression engine | subclass hook `BasicCompactionEngine.summarize()` |
+| Auxiliary Models settings page | client `settings.section` slot (`ctx.slots.register`) |
 
 Image content uses the harness `image` content block (`ImageAttachmentRef`), committed and read through the `ctx.attachments` seam, so the adapter never touches a concrete storage backend.
 
@@ -90,6 +91,15 @@ All fields are optional; defaults are shown.
       auto: true
       compressPrompt: "..."                # custom compression instruction
 ```
+
+### Settings page: Auxiliary Models
+
+The plugin ships a web settings section (**Settings → Auxiliary Models**) that
+lists every provider already configured in Models and lets you pick one plus
+one of its models. Saving writes `vision.provider` + `vision.model`, after
+which `inspect_image` (and any compaction routing you enable) routes through
+that provider — no custom endpoint needed. The legacy custom-endpoint mode
+(`baseURL` + `apiKeyEnv`) remains available when `vision.provider` is unset.
 
 ### Notes
 
