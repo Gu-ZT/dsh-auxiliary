@@ -395,6 +395,28 @@ export async function saveAuxFeature(
   return snapshotOf(view);
 }
 
+/** Read-only host state served by the dsh-auxiliary state endpoint. */
+export interface ApproveHostState {
+  /** Whether the approve-for-me plugin registered one of its review presets. */
+  readonly approvePluginInstalled: boolean;
+}
+
+/**
+ * Fetch the host-side approve-for-me detection state. The endpoint is a
+ * same-origin read-only route registered by the plugin; any failure (older
+ * host, headless profile, network) conservatively reports "not installed".
+ */
+export async function loadApproveHostState(): Promise<ApproveHostState> {
+  try {
+    const response = await fetch('/dsh-auxiliary/state', { headers: { accept: 'application/json' } });
+    if (!response.ok) return { approvePluginInstalled: false };
+    const state = await response.json() as Partial<ApproveHostState>;
+    return { approvePluginInstalled: state.approvePluginInstalled === true };
+  } catch {
+    return { approvePluginInstalled: false };
+  }
+}
+
 /** Return the Host revision from a structured settings conflict, if present. */
 export function conflictRevision(error: unknown): number | undefined {
   if (!(error instanceof AuxiliaryApiError) || error.code !== 'settings-conflict') return undefined;

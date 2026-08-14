@@ -21,6 +21,14 @@
  * audits marked requests) skips it — matching the original call, which was
  * never marked either.
  *
+ * A companion read-only HTTP endpoint (`/dsh-auxiliary/state`) tells the
+ * settings page whether the approve-for-me plugin is installed, so the
+ * "Approval model" card can show an informative notice instead of a dead
+ * configuration. Both `webServer` and `permissionPresets` are optional
+ * services: the endpoint simply stays unregistered where no web server exists,
+ * and plugin detection degrades to "not installed" when the preset service is
+ * absent.
+ *
  * @module dsh-auxiliary/approve-router
  */
 import type { Context } from '@deepseek-ai/cordis';
@@ -29,6 +37,15 @@ import type { ResolvedPluginConfig } from './config.js';
 
 /** The approve-for-me review prompt's fixed action marker. */
 const APPROVAL_REQUEST_MARKER = '>>> APPROVAL REQUEST START';
+
+/** The approve-for-me plugin's default permission-preset names. */
+const APPROVE_PRESET_NAMES = ['approve-for-me', 'strict-review'] as const;
+
+/** Read-only state payload served to the settings page. */
+export interface ApproveHostState {
+  /** Whether the approve-for-me plugin registered one of its review presets. */
+  readonly approvePluginInstalled: boolean;
+}
 
 /**
  * Whether one `llm/stream` request is the approve-for-me plugin's review call.
@@ -86,5 +103,82 @@ export function registerApproveRouter(ctx: Context, get: () => ResolvedPluginCon
 
   return () => {
     disposeListener();
+  };
+}
+
+/** Read the live permission-preset service without throwing when it is absent. */
+function permissionPresetNames(ctx: Context): readonly string[] | undefined {
+  // Accessing an unregistered service throws; treat that as "no service".
+  try {
+    const service = (ctx as Context & { permissionPresets?: { names: readonly string[] } }).permissionPresets;
+    return service === undefined ? undefined : service.names;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Detect whether the approve-for-me plugin is installed by its permission
+ * presets. The plugin registers `approve-for-me` and `strict-review` into the
+ * live preset table at apply time; a renamed preset (via its own config) is not
+ * detectable this way.
+ */
+export function isApprovePluginInstalled(ctx: Context): boolean {
+  const names = permissionPresetNames(ctx);
+  if (names === undefined) return false;
+  return APPROVE_PRESET_NAMES.some((preset) => names.includes(preset));
+}
+
+/**
+ * Serve the plugin's read-only state to the settings page via the optional
+ * `webServer` service. The endpoint is exact-path `/dsh-auxiliary/state` and
+ * returns JSON `{ approvePluginInstalled }`; without a web server (headless
+ * profiles) it registers nothing. Returns a disposer.
+ *
+ * @param ctx - the plugin context.
+ */
+export function registerApproveStateEndpoint(ctx: Context): () => void {
+  const disposers: Array<() => void> = [];
+  let routeDisposer: (() => void) | undefined;
+
+  const tryRegister = (): void => {
+    if (routeDisposer !== undefined) return; // already registered.
+    // The webServer service is fiber-isolated: only plugins that inject it may
+    // read it from their own ctx. The root context sees the global service
+    // table, so it reaches the instance without making webServer a hard
+    // dependency (headless profiles have none).
+    let webServer: import('@deepseek-ai/dsh-host-webserver').WebServer | undefined;
+    try {
+      webServer = (ctx.root as Context & { webServer?: import('@deepseek-ai/dsh-host-webserver').WebServer }).webServer;
+    } catch {
+      return; // webServer not available in this profile.
+    }
+    if (webServer === undefined) return;
+    routeDisposer = webServer.register({
+      kind: 'exact',
+      path: '/dsh-auxiliary/state',
+      handler: (_req, res) => {
+        const state: ApproveHostState = {
+          approvePluginInstalled: isApprovePluginInstalled(ctx),
+        };
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify(state));
+      }
+    });
+    disposers.push(() => {
+      routeDisposer?.();
+      routeDisposer = undefined;
+    });
+  };
+
+  // Register now if the service is already bound, and on any later binding
+  // (the service re-notifies on updates; tryRegister is idempotent).
+  tryRegister();
+  disposers.push(ctx.root.on('internal/service', (name: string) => {
+    if (name === 'webServer') tryRegister();
+  }));
+
+  return () => {
+    for (const dispose of disposers.splice(0)) dispose();
   };
 }

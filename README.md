@@ -152,6 +152,14 @@ inert. Prefer a cheap, fast model for reviews. Requires approve-for-me's
 `mode: review` plus the `approve-for-me` or `strict-review` permission preset
 to take effect.
 
+The settings page detects whether the plugin is installed: the plugin serves a
+read-only JSON endpoint at `/dsh-auxiliary/state`
+(`{ "approvePluginInstalled": true|false }`) through the optional `webServer`
+service, and the **Approval model** card shows a "plugin not installed" notice
+with editing disabled when the plugin's presets are absent from the live
+`permissionPresets` table. The endpoint is loopback-local, returns no
+sensitive data, and is simply absent on headless profiles.
+
 ### Notes
 
 - `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `deepseek-official` with a cheaper model (placeholders; replace with your actual provider route and model id).

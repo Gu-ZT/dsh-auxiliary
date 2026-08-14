@@ -13,6 +13,7 @@ import type { SettingsSectionOwnerProps } from '@deepseek-ai/dsh-client-ui-setti
 import {
   AuxiliaryApiError,
   conflictRevision,
+  loadApproveHostState,
   loadAuxSettings,
   loadModels,
   saveAuxFeature,
@@ -296,6 +297,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   const [catalog, setCatalog] = useState<ModelCatalog | undefined>();
   const [settings, setSettings] = useState<AuxSettings | undefined>();
   const [revision, setRevision] = useState<number | undefined>();
+  const [approveInstalled, setApproveInstalled] = useState<boolean | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [writingFeature, setWritingFeature] = useState<AuxFeature | undefined>();
@@ -326,7 +328,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
     let active = true;
     setLoading(true);
     setLoadError(undefined);
-    void Promise.allSettled([loadModels(api), loadAuxSettings(api)]).then(([catalogResult, settingsResult]) => {
+    void Promise.allSettled([loadModels(api), loadAuxSettings(api), loadApproveHostState()]).then(([catalogResult, settingsResult, approveResult]) => {
       if (!active) return;
       const errors: string[] = [];
       if (catalogResult.status === 'fulfilled') {
@@ -338,6 +340,11 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         adoptSettings(settingsResult.value);
       } else {
         errors.push(errorMessage(settingsResult.reason));
+      }
+      if (approveResult.status === 'fulfilled') {
+        setApproveInstalled(approveResult.value.approvePluginInstalled);
+      } else {
+        setApproveInstalled(false);
       }
       setLoadError(errors.length === 0 ? undefined : errors.join('; '));
       setLoading(false);
@@ -380,6 +387,9 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   const settingsReady = settings?.available === true;
   const settingsWritable = settings?.writable === true;
   const cardsDisabled = !settingsReady || !settingsWritable || writingFeature !== undefined;
+  // Without the approve-for-me plugin the approval card is inert; show a notice
+  // and disable editing until the plugin is installed.
+  const approveDisabled = cardsDisabled || approveInstalled === false;
 
   return (
     <div style={sectionStyle}>
@@ -434,10 +444,10 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             description={t('approveDescription')}
             toggleLabel={t('approveToggle')}
             pickerLabel={t('approvePickerLabel')}
-            usage={t('approveUsage')}
+            usage={approveInstalled === false ? t('approveNotInstalled') : t('approveUsage')}
             initial={settings.approve}
             groups={catalog.groups}
-            disabled={cardsDisabled}
+            disabled={approveDisabled}
             t={t}
             onSave={saveFeature}
           />

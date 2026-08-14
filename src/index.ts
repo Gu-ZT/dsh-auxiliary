@@ -13,14 +13,14 @@ import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-sett
 import { Config, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type ResolvedPluginConfig } from './config.js';
 import { registerVisionTool } from './vision-tool.js';
 import { registerImageHandoff } from './image-handoff.js';
-import { registerApproveRouter } from './approve-router.js';
+import { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
 
 export { Config, PLUGIN_NAME, resolvePluginConfig } from './config.js';
 export { registerVisionTool } from './vision-tool.js';
 export { registerImageHandoff } from './image-handoff.js';
-export { registerApproveRouter, isApproveReviewCall } from './approve-router.js';
+export { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
 
@@ -119,10 +119,16 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeApproveRouter();
   };
 
+  // Read-only state endpoint for the settings page; independent of the routing
+  // feature because the card must render its "plugin not installed" notice even
+  // when `approve.enabled` is off.
+  const approveStateDisposer = registerApproveStateEndpoint(ctx);
+
   ctx.effect(() => () => {
     disposeVisionTool();
     disposeHandoff();
     disposeApproveRouter();
+    approveStateDisposer();
   }, 'dsh-auxiliary: vision tool, handoff, and approval-router lifecycle');
 
   installSettingsSection(ctx, NS, Config, config, {

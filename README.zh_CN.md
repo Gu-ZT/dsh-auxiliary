@@ -108,6 +108,8 @@ npm install dsh-auxiliary
 
 路由仅在功能开启且路由完整时激活；未安装该插件时不存在审查调用，监听器自然闲置。审查建议选择便宜快速的模型。生效前提：approve-for-me 处于 `mode: review` 且会话选中 `approve-for-me` 或 `strict-review` 权限预设。
 
+设置页会检测插件是否安装：插件通过可选的 `webServer` 服务提供只读 JSON 端点 `/dsh-auxiliary/state`（`{ "approvePluginInstalled": true|false }`）；当插件的预设不在 `permissionPresets` 实时表中时，「审批模型」卡片显示"未检测到插件"提示并禁用编辑。端点仅监听本机回环、不返回敏感数据，headless profile 中不会注册。
+
 ### 说明
 
 - `compact.enabled` 只改路由 `purpose: 'compaction'` 的调用。`provider`/`model` 可指向任意已注册路由——例如 `deepseek-official` 配一个更便宜的模型（示例值，请替换为你实际配置的提供商路由 id 与模型 id）。
