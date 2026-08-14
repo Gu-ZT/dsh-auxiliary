@@ -84,6 +84,8 @@ All fields are optional; defaults are shown.
 
 ### Settings page: Auxiliary Models
 
+![Auxiliary Models settings page](docs/image.png)
+
 The plugin ships a web settings section (**Settings → Auxiliary Models**).
 Configure a provider and its models in the **Models** page first, then use the
 two independent cards here: **Vision understanding** has its own `tool.enabled`
