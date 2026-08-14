@@ -1,7 +1,7 @@
 {
   "name": "dsh-auxiliary",
-  "version": "0.1.0",
-  "description": "DeepSeek Harness plugin adding auxiliary models: an OpenAI-compatible vision adapter, an inspect_image tool, and compaction routing to a dedicated summarizer model.",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness plugin that uses configured model providers for image analysis and context compaction.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -31,6 +31,10 @@
     "lib"
   ],
   "license": "LGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gu-ZT/dsh-auxiliary.git"
+  },
   "keywords": [
     "deepseek-harness",
     "dsh",
@@ -41,8 +45,10 @@
     "auxiliary-model"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit"
+    "clean": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('lib', { recursive: true, force: true });\"",
+    "build": "npm run clean && tsc -p tsconfig.json && tsc -p tsconfig.client.build.json && tsdown",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.1",
@@ -55,9 +61,7 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-attachment": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-fs": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-credentials": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-launch-environment": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-settings": "^0.1.0-rc.6"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-compaction-basic": {
@@ -75,7 +79,6 @@
     "@deepseek-ai/dsh-client-ui-settings": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-compaction-basic": "^0.1.0-rc.6",
-    "@types/node": "^24.0.0",
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
     "tsdown": "0.22.2",

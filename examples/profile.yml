@@ -1,37 +1,30 @@
 # dsh-auxiliary — 配置示例
 
 将本插件加入 DeepSeek Harness 的 profile（`dsh.profile.yml` / `cordis.yml` 的插件列表）。
-以下配置演示全部四个功能；按需删除不需要的分节。
+以下配置覆盖全部功能；按需删除不需要的分节。
 
 ```yaml
 # cordis.yml（或 profile 的 plugins 列表）
 - name: dsh-auxiliary
   config:
+    # 辅助视觉模型：先在「模型」页添加提供商与模型，
+    # 再到 设置 → 辅助模型 选择并保存（写入 vision.provider / vision.model）。
+    # 该选择只影响 inspect_image，无需在此配置自定义端点或密钥。
     vision:
-      enabled: true
-      # 任意 OpenAI 兼容的视觉端点（如 OpenAI / SiliconFlow / 通义千问 VL / Moonshot 等）
-      baseURL: https://api.openai.com/v1
-      # 通过凭据服务（Web 的 Models 页面）或环境变量提供密钥
-      apiKeyEnv: VISION_API_KEY
-      model: gpt-4o-mini
-      maxTokens: 2048
-      # 可选：补充模型目录（用于选择器展示）
-      # models:
-      #   - id: qwen-vl-plus
-      #     name: Qwen-VL-Plus
-      #     contextWindow: 32768
-      #     maxTokens: 4096
+      maxTokens: 2048               # 单次 inspect_image 输出上限
 
     tool:
       enabled: true
       maxImageBytes: 10485760
       timeoutMs: 120000
 
-    # 把压缩摘要调用路由到独立辅助模型（主对话模型不受影响）
+    # 把压缩摘要调用路由到独立辅助模型（主对话模型不受影响），
+    # 与上面的视觉选择相互独立。provider/model 需指向模型页中已配置的
+    # 提供商路由与模型，下面为可替换的占位示例。
     compact:
       enabled: true
-      provider: aux-vision        # 复用视觉辅助模型（可处理含图片的历史）
-      model: gpt-4o-mini
+      provider: deepseek-official        # 已注册的提供商路由 id（示例，请替换）
+      model: deepseek-chat               # 该提供商下的模型 id（示例，请替换）
 
     # 可选：替换默认压缩后端，使用显式“压缩”指令（与 dsh-compaction-basic 互斥）
     engine:
@@ -44,6 +37,7 @@
 
 - `engine.enabled: true` 时**不要**同时加载 `@deepseek-ai/dsh-compaction-basic`，
   两者都会提供 `ctx.compaction`；插件检测到冲突时会跳过引擎并告警。
-- 若只想使用压缩路由而不配置视觉端点，可让 `compact.provider/model` 指向任意
-  已注册的提供方（如 `deepseek-official` 配一个更便宜的模型）。
-- 密钥优先级：凭据服务（credentials）→ 启动环境变量（`VISION_API_KEY`）。
+- `compact.provider/model` 与设置页的视觉选择相互独立：前者只路由
+  `purpose: 'compaction'` 的摘要调用，后者只决定 `inspect_image` 使用的
+  视觉模型。示例中的 `deepseek-official` / `deepseek-chat` 是可替换的占位
+  示例，请换成你实际配置的提供商路由 id 与模型 id。

@@ -1,9 +1,9 @@
 /**
  * The model-facing `inspect_image` tool: read a local image file, commit it
- * through the attachment seam, and ask the auxiliary vision model about it.
- * The tool stays registered even when the vision provider is misconfigured and
- * then fails with a structured error at execution time, mirroring the web-tool
- * enablement pattern.
+ * through the attachment seam, and ask the selected configured vision model.
+ * The tool stays registered when no provider/model is selected and then fails
+ * with a clear execution-time error, so a saved selection takes effect without
+ * a plugin restart.
  *
  * @module dsh-auxiliary/vision-tool
  */
@@ -14,7 +14,6 @@ import '@deepseek-ai/dsh-fs';
 import type { ImageMediaType, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
 import { deadline } from '@deepseek-ai/dsh-timeout';
 import { PLUGIN_NAME, type ResolvedPluginConfig } from './config.js';
-import { VISION_PROVIDER } from './vision-adapter.js';
 
 /** Timeout code stamped on vision-tool aborts. */
 const VISION_TOOL_TIMEOUT_CODE = 'AUX_VISION_TOOL_TIMEOUT';
@@ -64,7 +63,7 @@ function basename(path: string): string {
   return path.split(/[\\/]/).pop() ?? path;
 }
 
-/** Run one one-shot auxiliary vision call and return its text answer. */
+/** Run one one-shot call through the selected vision route and return its text answer. */
 async function askVision(
   ctx: Context,
   get: () => ResolvedPluginConfig,
@@ -74,8 +73,8 @@ async function askVision(
   sessionId: GenerateOptions['sessionId']
 ): Promise<string> {
   const vision = get().vision;
-  if (!vision.enabled) {
-    throw new Error('inspect_image: the vision auxiliary model is disabled; enable dsh-auxiliary.vision in config');
+  if (vision.provider === undefined || vision.model === undefined) {
+    throw new Error('inspect_image: no vision provider/model is selected; select both in dsh-auxiliary settings before using this tool');
   }
   const messages = [
     createUserMessage({
@@ -88,12 +87,13 @@ async function askVision(
   ];
   const timeout = deadline(signal, get().tool.timeoutMs, VISION_TOOL_TIMEOUT_CODE);
   try {
+    const modelInfo = await ctx.llm.resolveModelInfo(vision.provider, vision.model, timeout.signal);
+    if (modelInfo.inputModalities !== undefined && !modelInfo.inputModalities.includes('image')) {
+      throw new Error(`inspect_image: selected model "${vision.provider}/${vision.model}" does not support image input`);
+    }
     const assembler = new BlockAssembler();
-    // `provider` selects the route: an already-configured provider reference
-    // (set from the settings UI) or the aux-vision custom endpoint.
-    const provider = vision.provider ?? VISION_PROVIDER;
     for await (const chunk of ctx.llm.stream(deepFreeze({
-      provider,
+      provider: vision.provider,
       model: vision.model,
       messages,
       maxTokens: vision.maxTokens,
@@ -128,11 +128,11 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
   ctx.systemPrompt.section({
     name: 'tool:inspect_image',
     order: 160,
-    text: 'Use the inspect_image tool to analyze local image files (screenshots, photos, diagrams) with the auxiliary vision model. Pass the file path and an optional question; the answer comes back as text.'
+    text: 'Use the inspect_image tool to analyze local image files (screenshots, photos, diagrams) with the selected vision model. Pass the file path and an optional question; the answer comes back as text.'
   });
   ctx.tools.register(defineTool({
     name: 'inspect_image',
-    description: 'Analyze a local image file with the auxiliary vision model. Pass an absolute or workspace-relative path to a PNG/JPEG/WebP/GIF file and an optional question; returns the vision model\'s answer as text.',
+    description: 'Analyze a local image file with the selected vision model. Pass an absolute or workspace-relative path to a PNG/JPEG/WebP/GIF file and an optional question; returns the vision model\'s answer as text.',
     parameters: {
       path: {
         type: 'string',

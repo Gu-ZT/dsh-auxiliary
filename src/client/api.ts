@@ -7,6 +7,7 @@
 import type {
   ConfigurableProviderView,
   IApiClient,
+  ModelCatalogFailure,
   ModelCatalogModel,
   SettingsNamespaceView,
 } from '@deepseek-ai/dsh-client-connection/client';
@@ -27,10 +28,24 @@ export interface ModelOption {
   name: string;
 }
 
+/** Host model catalog plus non-fatal per-provider lookup diagnostics. */
+export interface ModelCatalog {
+  modelsByProvider: Record<string, ModelOption[]>;
+  failures: readonly ModelCatalogFailure[];
+}
+
 /** The currently stored auxiliary selection (vision provider/model). */
 export interface AuxSelection {
   provider?: string;
   model?: string;
+}
+
+/** Settings state needed to show and write the auxiliary selection. */
+export interface AuxSettings {
+  selection: AuxSelection;
+  revision?: number;
+  available: boolean;
+  writable: boolean;
 }
 
 /** Unwrap a unary RPC response's value, throwing on business errors. */
@@ -50,17 +65,17 @@ export async function loadProviders(api: IApiClient): Promise<ProviderOption[]> 
 }
 
 /** Host-scoped model catalog grouped by provider route. */
-export async function loadModels(api: IApiClient): Promise<Record<string, ModelOption[]>> {
+export async function loadModels(api: IApiClient): Promise<ModelCatalog> {
   const value = valueOf(await api.llm.models({}));
-  const map: Record<string, ModelOption[]> = {};
+  const modelsByProvider: Record<string, ModelOption[]> = {};
   for (const group of value.groups) {
-    map[group.id] = group.models.map((model: ModelCatalogModel) => ({ id: model.id, name: model.name }));
+    modelsByProvider[group.id] = group.models.map((model: ModelCatalogModel) => ({ id: model.id, name: model.name }));
   }
-  return map;
+  return { modelsByProvider, failures: value.failures };
 }
 
 /** Read the dsh-auxiliary namespace from the settings descriptor. */
-export async function loadAuxSettings(api: IApiClient): Promise<{ selection: AuxSelection; revision?: number }> {
+export async function loadAuxSettings(api: IApiClient): Promise<AuxSettings> {
   const value = valueOf(await api.settings.describe({}));
   const namespace: SettingsNamespaceView | undefined = value.namespaces.find((ns) => ns.ns === 'dsh-auxiliary');
   const section = namespace?.value as { vision?: { provider?: string; model?: string } } | undefined;
@@ -70,23 +85,32 @@ export async function loadAuxSettings(api: IApiClient): Promise<{ selection: Aux
       model: section?.vision?.model,
     },
     revision: namespace?.revision,
+    available: namespace !== undefined,
+    writable: value.writable,
   };
 }
 
-/** Persist the selection into the dsh-auxiliary settings user layer. */
+/**
+ * Persist one complete selection into the dsh-auxiliary settings user layer.
+ * `update` bumps the namespace revision, so resolve and return the new one —
+ * the caller adopts it as its next `expectedRevision`.
+ */
 export async function saveAuxSelection(
   api: IApiClient,
   selection: AuxSelection,
   expectedRevision?: number,
-): Promise<void> {
-  await valueOf(await api.settings.update({
+): Promise<number> {
+  const provider = selection.provider?.trim();
+  const model = selection.model?.trim();
+  if (provider === undefined || provider === '' || model === undefined || model === '') {
+    throw new Error('dsh-auxiliary: vision provider and model must both be selected');
+  }
+  const view = valueOf(await api.settings.update({
     ns: 'dsh-auxiliary',
     patch: {
-      vision: {
-        ...(selection.provider !== undefined && selection.provider !== '' ? { provider: selection.provider } : {}),
-        ...(selection.model !== undefined && selection.model !== '' ? { model: selection.model } : {}),
-      },
+      vision: { provider, model },
     },
     ...(expectedRevision !== undefined ? { expectedRevision } : {}),
   }));
+  return view.revision;
 }

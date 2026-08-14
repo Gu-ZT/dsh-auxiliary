@@ -17,8 +17,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots';
 // Type-only: pulls the settings.section SlotMap declaration and owner props.
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
-import { AuxiliarySection, type AuxiliarySectionProps } from './AuxiliarySection.tsx';
-import { en, zh, type AuxiliaryKey } from './locales.ts';
+import { AuxiliarySection, type AuxiliarySectionProps } from './AuxiliarySection.js';
+import { en, zh, type AuxiliaryKey } from './locales.js';
 
 /** Locale namespace this plugin owns. */
 const NS = 'dsh-auxiliary';
@@ -34,8 +34,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 export const inject = ['slots', 'locale', 'connection'];
 
 /** Type-only surface (export discipline: no value exports beyond the plugin contract). */
-export type { AuxiliarySectionProps } from './AuxiliarySection.tsx';
-export type { AuxiliaryKey } from './locales.ts';
+export type { AuxiliarySectionProps } from './AuxiliarySection.js';
+export type { AuxiliaryKey } from './locales.js';
 
 /**
  * Register the Auxiliary Models settings section.

@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import type { IApiClient } from '@deepseek-ai/dsh-client-connection/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SettingsSectionOwnerProps } from '@deepseek-ai/dsh-client-ui-settings/client';
-import { loadAuxSettings, loadModels, loadProviders, saveAuxSelection, type ModelOption, type ProviderOption } from './api.ts';
+import { loadAuxSettings, loadModels, loadProviders, saveAuxSelection, type AuxSettings, type ModelOption, type ProviderOption } from './api.js';
 
 /** Composed props: settings section owner share + this page's injected face. */
 export interface AuxiliarySectionProps extends SettingsSectionOwnerProps {
@@ -119,6 +119,9 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   const [provider, setProvider] = useState('');
   const [model, setModel] = useState('');
   const [revision, setRevision] = useState<number | undefined>(undefined);
+  const [settingsAvailable, setSettingsAvailable] = useState(false);
+  const [settingsWritable, setSettingsWritable] = useState(false);
+  const [catalogFailure, setCatalogFailure] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState(false);
@@ -128,22 +131,41 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
     let cancelled = false;
     (async () => {
       try {
-        const [providerRows, modelGroups, current] = await Promise.all([
+        const [providerRows, catalog] = await Promise.all([
           loadProviders(api),
           loadModels(api),
-          loadAuxSettings(api),
         ]);
+        let current: AuxSettings | undefined;
+        let settingsError: string | undefined;
+        try {
+          current = await loadAuxSettings(api);
+        } catch (cause) {
+          settingsError = cause instanceof Error ? cause.message : String(cause);
+        }
         if (cancelled) return;
-        setProviders(providerRows);
-        setModelsByProvider(modelGroups);
-        setRevision(current.revision);
-        // Prefer the stored selection; fall back to the first active provider.
-        const initial = current.selection.provider !== undefined && current.selection.provider !== ''
-          && providerRows.some((row) => row.id === current.selection.provider)
-          ? current.selection.provider
-          : (providerRows.find((row) => row.active)?.id ?? providerRows[0]?.id ?? '');
+        // Only routes that are live AND advertise at least one catalog model
+        // are selectable; inactive or model-less providers are dropped.
+        const available = providerRows.filter(
+          (row) => row.active && (catalog.modelsByProvider[row.id]?.length ?? 0) > 0,
+        );
+        setProviders(available);
+        setModelsByProvider(catalog.modelsByProvider);
+        setRevision(current?.revision);
+        setSettingsAvailable(current?.available ?? false);
+        setSettingsWritable(current?.writable ?? false);
+        setCatalogFailure(catalog.failures.length === 0
+          ? undefined
+          : catalog.failures.map((failure) => `${failure.name} (${failure.id}): ${failure.message}`).join('; '));
+        setError(settingsError);
+        // Prefer the stored selection while it is still selectable; otherwise
+        // fall back to the first available provider (never an inactive route).
+        const stored = current?.selection.provider;
+        const initial = stored !== undefined && stored !== ''
+          && available.some((row) => row.id === stored)
+          ? stored
+          : (available[0]?.id ?? '');
         setProvider(initial);
-        setModel(initialModel(modelGroups[initial] ?? [], current.selection.model));
+        setModel(initialModel(catalog.modelsByProvider[initial] ?? [], current?.selection.model));
       } catch (cause) {
         if (cancelled) return;
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -168,27 +190,35 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   }, []);
 
   const onSave = useCallback(async () => {
-    if (provider === '' || model === '') return;
+    if (!settingsAvailable || !settingsWritable || provider === '' || model === '') return;
     setSaving(true);
     setError(undefined);
     setSaved(false);
     try {
-      await saveAuxSelection(api, { provider, model }, revision);
+      // settings.update bumps the namespace revision; adopt the returned one
+      // so a consecutive save sends a fresh expectedRevision instead of a
+      // stale copy that the settings seam would refuse.
+      const next = await saveAuxSelection(api, { provider, model }, revision);
+      setRevision(next);
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
     }
-  }, [api, provider, model, revision]);
+  }, [api, model, provider, revision, settingsAvailable, settingsWritable]);
 
   const modelOptions = modelsByProvider[provider] ?? [];
+  const canSave = settingsAvailable && settingsWritable && provider !== '' && model !== '' && !saving;
 
   return (
-    <section style={sectionStyle}>
+    <div style={sectionStyle}>
       <h2 style={titleStyle}>{t('nav')}</h2>
       <p style={introStyle}>{t('intro')}</p>
       {loading ? <p style={introStyle}>{t('loading')}</p> : null}
+      {!loading && !settingsAvailable ? <p style={errorStyle}>{t('settingsUnavailable')}</p> : null}
+      {!loading && settingsAvailable && !settingsWritable ? <p style={errorStyle}>{t('settingsReadOnly')}</p> : null}
+      {!loading && catalogFailure !== undefined ? <p style={errorStyle}>{t('catalogFailure')} {catalogFailure}</p> : null}
       {!loading && providers.length === 0 ? <p style={errorStyle}>{t('noProvider')}</p> : null}
       {!loading && providers.length > 0 ? (
         <>
@@ -201,7 +231,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             >
               {providers.map((row) => (
                 <option key={row.id} value={row.id}>
-                  {row.name}{row.active ? '' : ' (inactive)'}
+                  {row.name}
                 </option>
               ))}
             </select>
@@ -213,7 +243,6 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
               value={model}
               onChange={(event) => onModelChange(event.target.value)}
             >
-              {modelOptions.length === 0 ? <option value="">{t('noModel')}</option> : null}
               {modelOptions.map((entry) => (
                 <option key={entry.id} value={entry.id}>{entry.name}</option>
               ))}
@@ -222,8 +251,8 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
           <div style={saveRowStyle}>
             <button
               type="button"
-              style={{ ...saveStyle, opacity: provider === '' || model === '' || saving ? 0.4 : 1 }}
-              disabled={provider === '' || model === '' || saving}
+              style={{ ...saveStyle, opacity: canSave ? 1 : 0.4 }}
+              disabled={!canSave}
               onClick={() => { void onSave(); }}
             >
               {t('save')}
@@ -233,6 +262,6 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         </>
       ) : null}
       {error !== undefined ? <p style={errorStyle}>{t('error')} {error}</p> : null}
-    </section>
+    </div>
   );
 }

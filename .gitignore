@@ -3,4 +3,4 @@ lib/
 *.tsbuildinfo
 .docs/
 .npm-cache/
-package-lock.json
+.idea/

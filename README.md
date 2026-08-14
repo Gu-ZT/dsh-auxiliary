@@ -10,7 +10,7 @@ English | [简体中文](README.zh_CN.md)
 
 `dsh-auxiliary` is a [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) plugin that adds auxiliary model capabilities on top of the harness LLM seam (`ctx.llm`), without changing the main conversation model:
 
-- **Vision provider** — registers an OpenAI-compatible `aux-vision` provider route that accepts harness `image` content blocks and streams chat completions from any OpenAI-compatible vision endpoint.
+- **Vision model** — reuses a provider and model already configured in Models: add them in the **Models** page, then pick them under **Settings → Auxiliary Models** (saved as `vision.provider` + `vision.model`), and `inspect_image` calls the vision model through that provider.
 - **`inspect_image` tool** — lets the agent read a local image file and ask the auxiliary vision model about it, so a text-only main model can still understand screenshots, photos, and diagrams.
 - **Compaction routing** — an `llm/stream` waterfall listener reroutes every `purpose: 'compaction'` summary call to a dedicated auxiliary summarizer pair, so context compression runs on a separate (cheaper/faster, or vision-capable) model.
 - **Compression engine** *(optional)* — a `BasicCompactionEngine` subclass that drives summarization with an explicit context-compression instruction instead of the default prompt.
@@ -21,13 +21,13 @@ The plugin follows the standard DSH extension points documented in the [plugin d
 
 | Feature | Extension point |
 | --- | --- |
-| Vision provider | `ctx.llm.registerAdapter()` + `ctx.llm.registerConfigurableProviders()` (appears in the Models settings page) |
+| Vision selection | client `api.llm.providers()` / `api.llm.models()` + `ctx.llm.stream()` (reuse existing Models routes) |
 | `inspect_image` tool | `ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section(...)` |
 | Compaction routing | `ctx.on('llm/stream', ...)` waterfall listener |
 | Compression engine | subclass hook `BasicCompactionEngine.summarize()` |
 | Auxiliary Models settings page | client `settings.section` slot (`ctx.slots.register`) |
 
-Image content uses the harness `image` content block (`ImageAttachmentRef`), committed and read through the `ctx.attachments` seam, so the adapter never touches a concrete storage backend.
+Image content uses the harness `image` content block (`ImageAttachmentRef`), committed and read through the `ctx.attachments` seam, so the plugin never touches a concrete storage backend.
 
 ## Installation
 
@@ -42,18 +42,11 @@ Then enable it in the profile plugin list (see [`examples/profile.yml`](examples
 ```yaml
 - name: dsh-auxiliary
   config:
-    vision:
+    tool:
       enabled: true
-      baseURL: https://api.openai.com/v1   # any OpenAI-compatible vision endpoint
-      apiKeyEnv: VISION_API_KEY
-      model: gpt-4o-mini
-    compact:
-      enabled: true
-      provider: aux-vision                 # reroute compaction summaries here
-      model: gpt-4o-mini
 ```
 
-The API key is resolved through the credentials service (the web Models page) or the `VISION_API_KEY` environment variable.
+Once enabled, add a provider and its models in the web **Models** page, then pick them under **Settings → Auxiliary Models** — no custom endpoint or API key is needed.
 
 ## Configuration
 
@@ -63,24 +56,15 @@ All fields are optional; defaults are shown.
 - name: dsh-auxiliary
   config:
     vision:
-      enabled: true                        # register the aux-vision provider route
-      displayName: Aux Vision (OpenAI-compatible)
-      baseURL: https://api.openai.com/v1   # OpenAI-compatible /chat/completions endpoint
-      apiKeyEnv: VISION_API_KEY            # credential ref or environment variable
-      model: gpt-4o-mini                   # primary vision model
-      models: []                           # optional advisory catalog entries
-      maxTokens: 2048                      # per-request output cap
-      defaultContextWindow: 128000
-      streamIdleTimeoutMs: 300000
-      retryPolicy: { mode: normal, maxRetries: 2 }
+      maxTokens: 2048                      # inspect_image output cap (provider/model written by the settings page)
     tool:
       enabled: true                        # register the inspect_image tool
       maxImageBytes: 10485760              # per-file size cap
       timeoutMs: 120000                    # cooperative tool-call budget
     compact:
       enabled: false                       # reroute compaction summaries to an auxiliary model
-      provider: ""                         # must be set together with model
-      model: ""
+      provider: ""                         # e.g. deepseek-official (a registered provider route id)
+      model: ""                            # e.g. deepseek-chat (a model id on that provider)
     engine:
       enabled: false                       # optional compression engine (mutually exclusive with dsh-compaction-basic)
       thresholdRatio: 0.8
@@ -94,16 +78,18 @@ All fields are optional; defaults are shown.
 
 ### Settings page: Auxiliary Models
 
-The plugin ships a web settings section (**Settings → Auxiliary Models**) that
-lists every provider already configured in Models and lets you pick one plus
-one of its models. Saving writes `vision.provider` + `vision.model`, after
-which `inspect_image` (and any compaction routing you enable) routes through
-that provider — no custom endpoint needed. The legacy custom-endpoint mode
-(`baseURL` + `apiKeyEnv`) remains available when `vision.provider` is unset.
+The plugin ships a web settings section (**Settings → Auxiliary Models**).
+Configure a provider and its models in the **Models** page first, then pick
+them here: the page lists only providers that are currently enabled and
+advertise at least one model in the catalog, and the model list shows only
+that provider's catalog models. Saving writes `vision.provider` and
+`vision.model` — the selection only affects the vision model `inspect_image`
+uses; compaction summaries keep their own independent `compact.provider` /
+`compact.model` pair.
 
 ### Notes
 
-- `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `aux-vision` (handles image-bearing history) or a cheap model on your main provider.
+- `compact.enabled` reroutes only `purpose: 'compaction'` calls. Point `provider`/`model` at any registered route — e.g. `deepseek-official` with a cheaper model (placeholders; replace with your actual provider route and model id).
 - `engine.enabled: true` **replaces** the stock compaction backend; do not load `@deepseek-ai/dsh-compaction-basic` at the same time. The plugin detects the conflict and skips the engine with a warning.
 - Vision tool arguments: `path` (absolute or workspace-relative) and optional `question`. Supported formats: PNG, JPEG, WebP, GIF.
 

@@ -7,19 +7,13 @@
  * @module dsh-auxiliary/config
  */
 import z from '@deepseek-ai/schemastery';
-import { RetryPolicySchema, deepFreeze, resolveRetryPolicy, type ResolvedRetryPolicy } from '@deepseek-ai/dsh-llm';
+import { deepFreeze } from '@deepseek-ai/dsh-llm';
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout';
-import type { ResolvedVisionOptions, VisionModelEntry } from './vision-adapter.js';
 
 /** Stable plugin id recorded with plugin-sourced messages and tool guidance. */
 export const PLUGIN_NAME = 'dsh-auxiliary';
 
-export const DEFAULT_VISION_BASE_URL = 'https://api.openai.com/v1';
-export const DEFAULT_VISION_API_KEY_ENV = 'VISION_API_KEY';
-export const DEFAULT_VISION_MODEL = 'gpt-4o-mini';
-export const DEFAULT_VISION_CONTEXT_WINDOW = 128000;
 export const DEFAULT_VISION_MAX_TOKENS = 2048;
-export const DEFAULT_VISION_STREAM_IDLE_TIMEOUT_MS = 300000;
 export const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_VISION_TOOL_TIMEOUT_MS = 120000;
 export const DEFAULT_ENGINE_MAX_TOKENS = 8192;
@@ -41,28 +35,12 @@ export const DEFAULT_COMPRESS_PROMPT = [
   'Rules: preserve exact paths, commands, identifiers, numbers, and syntax fragments; capture user corrections faithfully; do not mention this compression request; output only the checkpoint text.'
 ].join('\n');
 
-const visionModelSchema = z.object({
-  id: z.string().required(),
-  name: z.string(),
-  description: z.string(),
-  contextWindow: z.number().step(1).min(1),
-  maxTokens: z.number().step(1).min(1)
-});
-
 /** Plugin entry / settings schema. Field defaults live here so the UI can render them. */
 const Config = z.object({
   vision: z.object({
-    enabled: z.boolean().default(true),
-    displayName: z.string().default('Aux Vision (OpenAI-compatible)'),
-    baseURL: z.string().default(DEFAULT_VISION_BASE_URL),
-    apiKeyEnv: z.string().role('credential-ref').default(DEFAULT_VISION_API_KEY_ENV),
-    model: z.string().default(DEFAULT_VISION_MODEL),
-    models: z.array(visionModelSchema).default([]),
-    maxTokens: z.number().step(1).min(1).default(DEFAULT_VISION_MAX_TOKENS),
-    defaultContextWindow: z.number().step(1).min(1).default(DEFAULT_VISION_CONTEXT_WINDOW),
-    streamIdleTimeoutMs: z.number().min(Number.MIN_VALUE).max(MAX_TIMER_DELAY_MS).default(DEFAULT_VISION_STREAM_IDLE_TIMEOUT_MS),
-    retryPolicy: RetryPolicySchema,
-    provider: z.string().description('Reference an already-configured provider route (e.g. anvilcraft-ai). When set, vision calls route through that provider instead of the aux-vision custom endpoint.')
+    provider: z.string().description('Select an already-configured provider route for inspect_image.'),
+    model: z.string().description('Select a model from the selected provider route for inspect_image.'),
+    maxTokens: z.number().step(1).min(1).default(DEFAULT_VISION_MAX_TOKENS)
   }),
   tool: z.object({
     enabled: z.boolean().default(true),
@@ -89,13 +67,11 @@ const Config = z.object({
 /** Inferred plugin configuration value. */
 export type PluginConfig = typeof Config extends z<infer T> ? T : never;
 
-/** Resolved vision provider facts consumed by the adapter and the tool. */
-export interface ResolvedVisionConfig extends ResolvedVisionOptions {
-  readonly enabled: boolean;
-  readonly displayName: string;
-  readonly apiKeyEnv: string;
-  /** Reference to an already-configured provider route; overrides the aux-vision custom endpoint. */
+/** Resolved selection for an existing vision-capable provider/model route. */
+export interface ResolvedVisionConfig {
   readonly provider: string | undefined;
+  readonly model: string | undefined;
+  readonly maxTokens: number;
 }
 
 /** Resolved `inspect_image` tool policy. */
@@ -132,26 +108,6 @@ export interface ResolvedPluginConfig {
   readonly engine: ResolvedEngineConfig;
 }
 
-/** Normalize one advisory catalog entry (rejects empty ids and invalid numbers). */
-function resolveModelEntry(entry: { id: string; name?: string; description?: string; contextWindow?: number; maxTokens?: number }, index: number): VisionModelEntry {
-  if (entry.id.length === 0) throw new Error(`dsh-auxiliary: vision.models[${index}].id must be non-empty`);
-  for (const key of ['name', 'description'] as const) {
-    const value = entry[key];
-    if (value !== undefined && value.length === 0) throw new Error(`dsh-auxiliary: vision.models[${index}].${key} must be non-empty when present`);
-  }
-  for (const key of ['contextWindow', 'maxTokens'] as const) {
-    const value = entry[key];
-    if (value !== undefined && (!Number.isInteger(value) || value <= 0)) throw new Error(`dsh-auxiliary: vision.models[${index}].${key} must be a positive integer`);
-  }
-  return {
-    id: entry.id,
-    ...(entry.name !== undefined ? { name: entry.name } : {}),
-    ...(entry.description !== undefined ? { description: entry.description } : {}),
-    ...(entry.contextWindow !== undefined ? { contextWindow: entry.contextWindow } : {}),
-    ...(entry.maxTokens !== undefined ? { maxTokens: entry.maxTokens } : {})
-  };
-}
-
 /** Resolve and validate one untrusted plugin-config snapshot into the frozen runtime shape. */
 export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig {
   const vision = config.vision ?? {};
@@ -159,27 +115,11 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const compact = config.compact ?? {};
   const engine = config.engine ?? {};
 
-  const providerRef = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
-
-  if (typeof vision.model !== 'string' || vision.model.length === 0) {
-    throw new Error('dsh-auxiliary: vision.model must be a non-empty string');
+  const visionProvider = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
+  const visionModel = typeof vision.model === 'string' && vision.model.length > 0 ? vision.model : undefined;
+  if (Boolean(visionProvider) !== Boolean(visionModel)) {
+    throw new Error('dsh-auxiliary: vision.provider and vision.model must be set together');
   }
-  if (providerRef === undefined && (typeof vision.baseURL !== 'string' || vision.baseURL.length === 0)) {
-    throw new Error('dsh-auxiliary: vision.baseURL must be a non-empty string when no vision.provider reference is set');
-  }
-  const streamIdleTimeoutMs = vision.streamIdleTimeoutMs ?? DEFAULT_VISION_STREAM_IDLE_TIMEOUT_MS;
-  if (!Number.isFinite(streamIdleTimeoutMs) || streamIdleTimeoutMs <= 0 || streamIdleTimeoutMs > MAX_TIMER_DELAY_MS) {
-    throw new Error(`dsh-auxiliary: vision.streamIdleTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`);
-  }
-  const seen = new Set<string>();
-  const models = Array.isArray(vision.models)
-    ? vision.models.map((entry, index) => {
-        const resolved = resolveModelEntry(entry, index);
-        if (seen.has(resolved.id)) throw new Error(`dsh-auxiliary: duplicate vision model "${resolved.id}"`);
-        seen.add(resolved.id);
-        return resolved;
-      })
-    : [];
 
   const compactProvider = typeof compact.provider === 'string' ? compact.provider : '';
   const compactModel = typeof compact.model === 'string' ? compact.model : '';
@@ -195,17 +135,9 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
 
   return deepFreeze({
     vision: {
-      enabled: vision.enabled ?? true,
-      displayName: typeof vision.displayName === 'string' && vision.displayName.length > 0 ? vision.displayName : 'Aux Vision (OpenAI-compatible)',
-      baseURL: typeof vision.baseURL === 'string' ? vision.baseURL : '',
-      apiKeyEnv: typeof vision.apiKeyEnv === 'string' && vision.apiKeyEnv.length > 0 ? vision.apiKeyEnv : DEFAULT_VISION_API_KEY_ENV,
-      model: vision.model,
-      models,
-      maxTokens: vision.maxTokens ?? DEFAULT_VISION_MAX_TOKENS,
-      defaultContextWindow: vision.defaultContextWindow ?? DEFAULT_VISION_CONTEXT_WINDOW,
-      streamIdleTimeoutMs,
-      retryPolicy: resolveRetryPolicy(vision.retryPolicy ?? { mode: 'normal', maxRetries: 2 }, 'dsh-auxiliary: vision.retryPolicy'),
-      provider: providerRef
+      provider: visionProvider,
+      model: visionModel,
+      maxTokens: vision.maxTokens ?? DEFAULT_VISION_MAX_TOKENS
     },
     tool: {
       enabled: tool.enabled ?? true,

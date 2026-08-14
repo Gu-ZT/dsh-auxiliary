@@ -8,7 +8,7 @@ export const zh = {
   /** Settings nav label. */
   nav: '辅助模型',
   /** Section intro paragraph. */
-  intro: '选择「模型」页中已经配置好的提供商与模型，用于辅助任务——inspect_image 使用的视觉模型，以及（启用时）压缩摘要的模型。',
+  intro: '选择「模型」页中已经配置好的提供商与模型，作为 inspect_image 读取图片时使用的视觉模型。此选择只影响 inspect_image；压缩摘要的模型由 compact 配置独立决定。',
   /** Provider select label. */
   providerLabel: '提供商',
   /** Model select label. */
@@ -21,10 +21,14 @@ export const zh = {
   loading: '加载中…',
   /** Load/save failure prefix. */
   error: '失败：',
-  /** No configurable provider yet. */
-  noProvider: '未找到可配置的提供商。请先在「模型」页配置一个。',
-  /** Selected provider advertises no models. */
-  noModel: '该提供商没有可用的模型。',
+  /** The plugin namespace cannot be saved through the current settings seam. */
+  settingsUnavailable: '当前无法访问此插件的设置，不能保存选择。',
+  /** The Host settings provider is read-only. */
+  settingsReadOnly: '当前设置为只读，不能保存选择。',
+  /** One or more providers failed to return a model catalog. */
+  catalogFailure: '以下提供商的模型目录加载失败：',
+  /** No selectable provider (none active with catalog models). */
+  noProvider: '没有可选择的提供商。请先在「模型」页添加并启用提供商（且它至少提供一个模型），再回到这里选择。',
 };
 
 /** Keys of the dsh-auxiliary surface copy. */
@@ -32,13 +36,15 @@ export type AuxiliaryKey = keyof typeof zh;
 
 export const en: Record<AuxiliaryKey, string> = {
   nav: 'Auxiliary Models',
-  intro: 'Pick the provider and model already configured in Models for auxiliary work — the vision model used by inspect_image, and (when enabled) compaction summaries.',
+  intro: 'Pick the provider and model already configured in Models as the vision model inspect_image uses to read images. This selection only affects inspect_image; compaction summaries use the separate compact provider/model setting.',
   providerLabel: 'Provider',
   modelLabel: 'Model',
   save: 'Save',
   saved: 'Saved',
   loading: 'Loading…',
   error: 'Failed:',
-  noProvider: 'No configurable providers found. Configure one in the Models page first.',
-  noModel: 'This provider advertises no models.',
+  settingsUnavailable: 'This plugin’s settings are unavailable, so the selection cannot be saved.',
+  settingsReadOnly: 'Settings are read-only, so the selection cannot be saved.',
+  catalogFailure: 'Model catalog lookup failed for:',
+  noProvider: 'No selectable providers. Add and enable a provider in the Models page first (it must advertise at least one model), then come back to pick it.',
 };
