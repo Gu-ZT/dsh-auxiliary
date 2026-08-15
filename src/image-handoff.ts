@@ -39,6 +39,32 @@ function imageReference(attachment: ImageAttachmentRef): string {
   return `[image: ${JSON.stringify(attachment)}]`;
 }
 
+/**
+ * Rewrite one content block. Image blocks become text references; tool-result
+ * blocks are recursed so an image nested inside a tool result (exactly how the
+ * core `read_image` tool renders its output) is rewritten too. The adapter
+ * image walk (`contentHasImage`) recurses into tool-result content, so a
+ * top-level-only rewrite would leave a nested image visible to text-only
+ * adapters — the failure this recursion exists to prevent.
+ * @param block - the block to rewrite.
+ * @returns the rewritten block and whether it changed.
+ */
+function rewriteBlock(block: ContentBlock): { block: ContentBlock; changed: boolean } {
+  if (block.type === 'image') {
+    return { block: { type: 'text', text: imageReference(block.attachment) }, changed: true };
+  }
+  if (block.type === 'tool-result') {
+    let changed = false;
+    const content = block.content.map((child) => {
+      const result = rewriteBlock(child);
+      if (result.changed) changed = true;
+      return result.block;
+    });
+    if (changed) return { block: { ...block, content }, changed: true };
+  }
+  return { block, changed: false };
+}
+
 /** Rewrite image blocks into text references; returns a fresh request when changed. */
 function rewriteImages(options: GenerateOptions): GenerateOptions | undefined {
   let changed = false;
@@ -48,10 +74,10 @@ function rewriteImages(options: GenerateOptions): GenerateOptions | undefined {
     const content = message.content;
     if (!Array.isArray(content)) return message;
     let contentChanged = false;
-    const nextContent = content.map((block): ContentBlock => {
-      if (block.type !== 'image') return block;
-      contentChanged = true;
-      return { type: 'text', text: imageReference(block.attachment) };
+    const nextContent = content.map((block) => {
+      const result = rewriteBlock(block);
+      if (result.changed) contentChanged = true;
+      return result.block;
     });
     if (!contentChanged) return message;
     changed = true;
