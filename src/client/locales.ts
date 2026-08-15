@@ -37,6 +37,12 @@ export const zh = {
   imageCapabilityDescription: '仅在上游模型确实支持图片时启用。',
   /** Loading state of an injected model-catalog checkbox. */
   imageCapabilityLoading: '正在读取图片输入声明…',
+  /** Injected model-catalog checkbox label for image generation. */
+  imageGenToggle: '允许图片生成',
+  /** Injected model-catalog checkbox explanation for image generation. */
+  imageGenDescription: '标记该模型可生成图片，供辅助生图功能选择模型。',
+  /** Loading state of an injected image-generation checkbox. */
+  imageGenLoading: '正在读取图片生成声明…',
   /** Exact distinction between route selection and model capabilities. */
   visionUsage: '此路线供 inspect_image 与 describe_image 使用：前者读取 Host 上的本地图片，后者读取聊天中附加的图片（主模型不支持图片时以 [image: …] 引用呈现，主模型会主动调用 describe_image 获取内容并注入上下文）。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
   /** Compaction feature card heading. */
@@ -113,6 +119,9 @@ export const en: Record<AuxiliaryKey, string> = {
   imageCapabilityToggle: 'Allow image input',
   imageCapabilityDescription: 'Enable only if the upstream model accepts images.',
   imageCapabilityLoading: 'Reading the image-input declaration…',
+  imageGenToggle: 'Allow image generation',
+  imageGenDescription: 'Marks the model as able to generate images, for auxiliary image-generation features to pick from.',
+  imageGenLoading: 'Reading the image-generation declaration…',
   visionUsage: 'This route serves inspect_image and describe_image: the former reads local images on the Host, the latter reads images attached to the chat (when the main model is text-only they appear as [image: …] references, and the main model calls describe_image to fetch their content into the context). Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
   compactTitle: 'Context compaction',
   compactDescription: 'Controls whether `purpose: compaction` summaries use the independent compact model route.',

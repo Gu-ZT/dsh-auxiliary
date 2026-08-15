@@ -54,7 +54,7 @@ export function apply(ctx: ClientContext): void {
 
   ctx.effect(
     () => startModelCatalogInjection(connection.api, t),
-    'dsh-auxiliary: model catalog image-input injection',
+    'dsh-auxiliary: model catalog capability injection',
   );
 
   ctx.slots.inject('settings.section', () => ctx.slots.register({

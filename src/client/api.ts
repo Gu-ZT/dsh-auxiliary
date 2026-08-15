@@ -262,6 +262,67 @@ export async function saveModelImageCapability(
   return { available: true, supported, writable: true };
 }
 
+/**
+ * Image-generation declaration of one editable llm-pi-ai model row.
+ *
+ * Unlike image input, pi-ai has no schema field for generation, so the flag
+ * lives in the user-owned row as a plugin-owned `imageGeneration` boolean: the
+ * settings service persists the raw user section (unknown keys survive), while
+ * pi-ai's own schema resolution strips the key from every derived view. Reads
+ * therefore go to the raw row directly — the resolved profile models would
+ * never carry the flag.
+ */
+export interface ModelGenerationCapability {
+  /** Whether the provider has a user-owned llm-pi-ai model row for this id. */
+  available: boolean;
+  /** Whether the model is currently marked as image-generating. */
+  supported: boolean;
+  /** Whether the Host settings provider accepts writes. */
+  writable: boolean;
+}
+
+/** Read the image-generation flag of one editable llm-pi-ai model. */
+export async function loadModelGenerationCapability(
+  api: IApiClient,
+  provider: string,
+  model: string,
+): Promise<ModelGenerationCapability> {
+  const settings = valueOf(await api.settings.describe({}));
+  const namespace = settings.namespaces.find((entry) => entry.ns === 'llm-pi-ai');
+  const location = namespace === undefined ? undefined : locatePiAiModel(namespace, provider, model);
+  if (location === undefined) return { available: false, supported: false, writable: settings.writable };
+  const row = location.models[location.modelIndex];
+  const supported = row.imageGeneration === true;
+  return { available: true, supported, writable: settings.writable };
+}
+
+/** Write one editable llm-pi-ai model's image-generation flag, preserving sibling rows. */
+export async function saveModelGenerationCapability(
+  api: IApiClient,
+  provider: string,
+  model: string,
+  supported: boolean,
+): Promise<ModelGenerationCapability> {
+  const settings = valueOf(await api.settings.describe({}));
+  const namespace = settings.namespaces.find((entry) => entry.ns === 'llm-pi-ai');
+  const location = namespace === undefined ? undefined : locatePiAiModel(namespace, provider, model);
+  if (location === undefined || !settings.writable) {
+    throw new AuxiliaryApiError(
+      'image-capability-unavailable',
+      'dsh-auxiliary: the selected model does not expose an editable llm-pi-ai model row',
+    );
+  }
+  const models = location.models.map((entry, index) => index === location.modelIndex
+    ? { ...entry, imageGeneration: supported }
+    : entry);
+  valueOf(await api.settings.update({
+    ns: 'llm-pi-ai',
+    patch: { providers: { [provider]: { models } } },
+    expectedRevision: location.namespace.revision,
+  }));
+  return { available: true, supported, writable: true };
+}
+
 interface AuxNamespaceValue {
   vision?: {
     provider?: string;

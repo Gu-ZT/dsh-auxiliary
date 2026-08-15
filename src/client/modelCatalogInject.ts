@@ -1,13 +1,13 @@
 /**
- * Model-catalog image-input injection.
+ * Model-catalog capability injection.
  *
  * The DSH Models settings page (dsh-client-ui-settings-models) does not expose
- * a slot inside its model rows, so this module injects an "Allow image input"
- * checkbox directly into each editable llm-pi-ai model row's advanced area.
- * It never edits the core package: the page is React-rendered and re-renders
- * freely, so a MutationObserver re-applies the injection whenever the DOM is
- * rebuilt, and every write goes through the same `llm-pi-ai` settings
- * namespace the Models page itself writes.
+ * a slot inside its model rows, so this module injects "Allow image input" and
+ * "Allow image generation" checkboxes directly into each editable llm-pi-ai
+ * model row's advanced area. It never edits the core package: the page is
+ * React-rendered and re-renders freely, so a MutationObserver re-applies the
+ * injection whenever the DOM is rebuilt, and every write goes through the same
+ * `llm-pi-ai` settings namespace the Models page itself writes.
  *
  * Provider/model identity is read from the settings document (data-driven),
  * not scraped from the DOM, so only user-owned llm-pi-ai model rows are ever
@@ -17,14 +17,62 @@
  */
 import type { IApiClient } from '@deepseek-ai/dsh-client-connection/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
-import { loadModelImageCapability, saveModelImageCapability } from './api.js';
+import {
+  loadModelGenerationCapability,
+  loadModelImageCapability,
+  saveModelGenerationCapability,
+  saveModelImageCapability,
+} from './api.js';
 
 /** Marker attribute on an injected checkbox so a rebuild never double-injects. */
-const MARK = 'data-dsh-aux-image-input';
+const MARK_IMAGE_INPUT = 'data-dsh-aux-image-input';
+/** Marker attribute on an injected image-generation checkbox. */
+const MARK_IMAGE_GEN = 'data-dsh-aux-image-gen';
 /** aria-label prefixes of the model-id text input on both shipped languages. */
 const MODEL_ID_LABELS = ['模型 ID ', 'Model ID '];
 /** Aria labels of the per-row disclosure control (the page's own copy). */
 const ADVANCED_LABELS = ['容量 ', 'Capacities ', '模型设置 ', 'Model settings '];
+
+/** Copy keys one injected capability checkbox renders. */
+type CapabilityCopyKey =
+  | 'imageCapabilityToggle' | 'imageCapabilityDescription' | 'imageCapabilityLoading'
+  | 'imageGenToggle' | 'imageGenDescription' | 'imageGenLoading';
+
+/** One injected capability checkbox: marker, copy, and the row read/write pair. */
+interface CapabilitySpec {
+  mark: string;
+  copy: {
+    toggle: CapabilityCopyKey;
+    description: CapabilityCopyKey;
+    loading: CapabilityCopyKey;
+  };
+  load: (api: IApiClient, provider: string, model: string) => Promise<{ supported: boolean; writable: boolean }>;
+  save: (api: IApiClient, provider: string, model: string, supported: boolean) => Promise<unknown>;
+}
+
+/** The two injected capabilities, in display order. */
+const CAPABILITIES: readonly CapabilitySpec[] = [
+  {
+    mark: MARK_IMAGE_INPUT,
+    copy: {
+      toggle: 'imageCapabilityToggle',
+      description: 'imageCapabilityDescription',
+      loading: 'imageCapabilityLoading',
+    },
+    load: loadModelImageCapability,
+    save: saveModelImageCapability,
+  },
+  {
+    mark: MARK_IMAGE_GEN,
+    copy: {
+      toggle: 'imageGenToggle',
+      description: 'imageGenDescription',
+      loading: 'imageGenLoading',
+    },
+    load: loadModelGenerationCapability,
+    save: saveModelGenerationCapability,
+  },
+];
 
 /** Capability state rendered by one injected checkbox. */
 interface CheckboxState {
@@ -60,12 +108,13 @@ function advancedAreaOf(entry: Element): HTMLElement | null {
   return candidates.length === 0 ? null : candidates[candidates.length - 1] as HTMLElement;
 }
 
-/** Build the injected control, wiring its state read and write. */
+/** Build one injected control, wiring its state read and write. */
 function buildCheckbox(
   api: IApiClient,
   t: TranslateNS<'dsh-auxiliary'>,
   provider: string,
   model: string,
+  spec: CapabilitySpec,
 ): HTMLElement {
   const state: CheckboxState = { provider, model, supported: false, writable: true, busy: true };
 
@@ -78,7 +127,7 @@ function buildCheckbox(
   input.style.width = '16px';
 
   const label = document.createElement('span');
-  label.textContent = t('imageCapabilityToggle');
+  label.textContent = t(spec.copy.toggle);
 
   const row = document.createElement('label');
   row.style.alignItems = 'center';
@@ -91,10 +140,10 @@ function buildCheckbox(
   hint.style.color = 'var(--dsw-alias-label-tertiary)';
   hint.style.fontSize = '12px';
   hint.style.lineHeight = '18px';
-  hint.textContent = t('imageCapabilityDescription');
+  hint.textContent = t(spec.copy.description);
 
   const box = document.createElement('div');
-  box.setAttribute(MARK, `${provider}\u0000${model}`);
+  box.setAttribute(spec.mark, `${provider}\u0000${model}`);
   box.style.display = 'flex';
   box.style.flexDirection = 'column';
   box.style.gap = '4px';
@@ -103,10 +152,10 @@ function buildCheckbox(
   const render = (): void => {
     input.checked = state.supported;
     input.disabled = state.busy || !state.writable;
-    hint.textContent = state.busy ? t('imageCapabilityLoading') : t('imageCapabilityDescription');
+    hint.textContent = state.busy ? t(spec.copy.loading) : t(spec.copy.description);
   };
 
-  void loadModelImageCapability(api, provider, model).then((capability) => {
+  void spec.load(api, provider, model).then((capability) => {
     state.supported = capability.supported;
     state.writable = capability.writable;
     state.busy = false;
@@ -122,7 +171,7 @@ function buildCheckbox(
     const requested = input.checked;
     state.busy = true;
     render();
-    void saveModelImageCapability(api, provider, model, requested).then(() => {
+    void spec.save(api, provider, model, requested).then(() => {
       state.supported = requested;
       state.busy = false;
       render();
@@ -146,10 +195,12 @@ function injectRow(
 ): void {
   const entry = input.parentElement?.parentElement;
   if (entry === undefined || entry === null) return;
-  if (entry.querySelector(`[${MARK}]`) !== null) return;
   const advanced = advancedAreaOf(entry);
   if (advanced === null) return;
-  advanced.append(buildCheckbox(api, t, provider, model));
+  for (const spec of CAPABILITIES) {
+    if (advanced.querySelector(`[${spec.mark}]`) !== null) continue;
+    advanced.append(buildCheckbox(api, t, provider, model, spec));
+  }
 }
 
 /** One sweep over the page: inject into every currently expanded pi-ai row. */
