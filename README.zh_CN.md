@@ -1,5 +1,7 @@
 <div align="center">
 
+![Banner](./docs/banner.png)
+
 # dsh-auxiliary
 
 **DeepSeek Harness 辅助模型插件：通过独立的模型路由提供视觉理解与上下文压缩能力。**

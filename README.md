@@ -1,5 +1,7 @@
 <div align="center">
 
+![Banner](./docs/banner.png)
+
 # dsh-auxiliary
 
 **Auxiliary models for DeepSeek Harness: vision understanding and context compression through dedicated model routes.**
