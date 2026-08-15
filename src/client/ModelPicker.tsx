@@ -14,6 +14,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -296,10 +297,13 @@ export function ModelPicker({
 
   useEffect(() => {
     if (!open) return;
+    // Synchronously position before paint so the popup never flashes at the
+    // initial (0,0) rect, and focus the first option without scrolling the
+    // page (which would move the trigger away from the fixed popup).
     updatePosition();
     const frame = window.requestAnimationFrame(() => {
       if (choices.length === 0) {
-        popupRef.current?.focus();
+        popupRef.current?.focus({ preventScroll: true });
         return;
       }
       const selectedIndex = choices.findIndex(
@@ -310,12 +314,19 @@ export function ModelPicker({
         : focusOnOpen.current === 'last'
           ? choices.length - 1
           : selectedIndex >= 0 ? selectedIndex : 0;
-      optionRefs.current[focus]?.focus();
+      optionRefs.current[focus]?.focus({ preventScroll: true });
     });
     return () => {
       window.cancelAnimationFrame(frame);
     };
   }, [choices, open, updatePosition, value.model, value.provider]);
+
+  // Re-measure after layout settles (fonts, option rows) so the popup tracks
+  // the trigger even when the first paint changed the geometry.
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+  }, [open, updatePosition]);
 
   useEffect(() => {
     if (!open) return;
