@@ -8,14 +8,14 @@
 
 English | [简体中文](README.zh_CN.md)
 
-<a href="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml">
-  <img src="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml/badge.svg" alt="Build Status">
+<a href="https://github.com/dsh-plugins/dsh-auxiliary/actions/workflows/npm-publish.yml">
+  <img src="https://github.com/dsh-plugins/dsh-auxiliary/actions/workflows/npm-publish.yml/badge.svg" alt="Build Status">
 </a>
-<a href="https://www.npmjs.com/package/dsh-auxiliary">
-  <img src="https://img.shields.io/npm/v/dsh-auxiliary.svg?sanitize=true" alt="Version">
+<a href="https://www.npmjs.com/package/@dsh-plugin/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/v/@dsh-plugin/dsh-auxiliary.svg?sanitize=true" alt="Version">
 </a>
-<a href="https://www.npmjs.com/package/dsh-auxiliary">
-  <img src="https://img.shields.io/npm/l/dsh-auxiliary.svg?sanitize=true" alt="License">
+<a href="https://www.npmjs.com/package/@dsh-plugin/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/l/@dsh-plugin/dsh-auxiliary.svg?sanitize=true" alt="License">
 </a>
 
 </div>
@@ -45,13 +45,13 @@ GUI). The agent performs the install and verification for you — no manual npm
 or profile editing needed:
 
 ```text
-Install the dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `dsh-auxiliary`; use the GitHub source `github:Gu-ZT/dsh-auxiliary`, or `file:<path>` for local development.
+Install the @dsh-plugin/dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `@dsh-plugin/dsh-auxiliary`; use the GitHub source `github:dsh-plugins/dsh-auxiliary`, or `file:<path>` for local development.
 
 Steps:
-1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
+1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
 2. The package declares a `prepack` build script. If pnpm fails with `ERR_PNPM_IGNORED_BUILDS`, approve the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) and retry the add.
-3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `dsh-auxiliary` (`name: dsh-auxiliary`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
-4. Verify `node_modules/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
+3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `@dsh-plugin/dsh-auxiliary` (`name: '@dsh-plugin/dsh-auxiliary'`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
+4. Verify `node_modules/@dsh-plugin/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
 5. Do not start the profile — install and verify only, then report what you changed.
 ```
 
@@ -234,7 +234,7 @@ Each feature is owned by a `reconcile*()` + disposer pair: on every settings cha
 All fields are optional; defaults are shown.
 
 ```yaml
-- name: dsh-auxiliary
+- name: '@dsh-plugin/dsh-auxiliary'
   config:
     vision:
       maxTokens: 2048                      # inspect_image output cap (provider/model written by the settings page)
@@ -299,6 +299,16 @@ settings**:
 - **Allow image generation** writes `imageGeneration: true` — the mark that
   makes the model selectable in the **Image-generation model** card. Enable
   only when the upstream endpoint actually generates images.
+
+The checkboxes are injected into every user-owned `llm-pi-ai` model row and
+are always visible — no need to expand the row's capacity disclosure. A model
+you are **adding** gets working checkboxes immediately: the marks are recorded
+in the browser and written into the model's settings at the same time the page
+saves the new model (Apply), so you can set image capabilities while adding,
+not only after saving. Rows that cannot carry the marks explain why instead of
+staying silent: DeepSeek-official (or any non-pi-ai adapter) rows show a notice
+that the marks are `llm-pi-ai`-only, and pi-ai catalog rows not yet saved into
+the user section say to save the model first.
 
 ## Notes
 

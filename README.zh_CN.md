@@ -8,14 +8,14 @@
 
 [English](README.md) | 简体中文
 
-<a href="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml">
-  <img src="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml/badge.svg" alt="Build Status">
+<a href="https://github.com/dsh-plugins/dsh-auxiliary/actions/workflows/npm-publish.yml">
+  <img src="https://github.com/dsh-plugins/dsh-auxiliary/actions/workflows/npm-publish.yml/badge.svg" alt="Build Status">
 </a>
-<a href="https://www.npmjs.com/package/dsh-auxiliary">
-  <img src="https://img.shields.io/npm/v/dsh-auxiliary.svg?sanitize=true" alt="Version">
+<a href="https://www.npmjs.com/package/@dsh-plugin/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/v/@dsh-plugin/dsh-auxiliary.svg?sanitize=true" alt="Version">
 </a>
-<a href="https://www.npmjs.com/package/dsh-auxiliary">
-  <img src="https://img.shields.io/npm/l/dsh-auxiliary.svg?sanitize=true" alt="License">
+<a href="https://www.npmjs.com/package/@dsh-plugin/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/l/@dsh-plugin/dsh-auxiliary.svg?sanitize=true" alt="License">
 </a>
 
 </div>
@@ -43,13 +43,13 @@
 复制下面的内容，粘贴给 DSH Agent（本 Web GUI 中的助手）。由 Agent 帮你完成安装与验证，无需手动执行 npm 或编辑 profile 配置：
 
 ```text
-把 dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `dsh-auxiliary`；使用 GitHub 源 `github:Gu-ZT/dsh-auxiliary`，本地开发可用 `file:<路径>`。
+把 @dsh-plugin/dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `@dsh-plugin/dsh-auxiliary`；使用 GitHub 源 `github:dsh-plugins/dsh-auxiliary`，本地开发可用 `file:<路径>`。
 
 步骤：
-1. 添加插件依赖：`dsh plugin --profile <PROFILE> add dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
+1. 添加插件依赖：`dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
 2. 该包声明了 `prepack` 构建脚本。若 pnpm 报 `ERR_PNPM_IGNORED_BUILDS`，在 profile 的 `pnpm-workspace.yaml`（`allowBuilds`）中批准构建后重试。
-3. 确认 profile 的 `cordis.patch.yml` 中有 dsh-auxiliary 的 insert 条目（`name: dsh-auxiliary`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
-4. 验证 `node_modules/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
+3. 确认 profile 的 `cordis.patch.yml` 中有 @dsh-plugin/dsh-auxiliary 的 insert 条目（`name: '@dsh-plugin/dsh-auxiliary'`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
+4. 验证 `node_modules/@dsh-plugin/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
 5. 不要启动 profile——只安装并验证，然后报告你改动了什么。
 ```
 
@@ -231,7 +231,7 @@ harness 的 LLM 抽象只处理文本，因此生图直接对话提供商的 **O
 所有字段均可选，括号内为默认值。
 
 ```yaml
-- name: dsh-auxiliary
+- name: '@dsh-plugin/dsh-auxiliary'
   config:
     vision:
       maxTokens: 2048                      # inspect_image 输出上限（provider/model 由设置页写入）
@@ -283,6 +283,8 @@ harness 的 LLM 抽象只处理文本，因此生图直接对话提供商的 **O
 
 - **允许图片输入**：写入标准 `input` 声明（勾选时 `[text, image]`，取消时 `[text]`）——供 `inspect_image` 与主聊天附件校验读取。仅在上游端点确实接受图片时启用。
 - **允许图片生成**：写入 `imageGeneration: true`——这是模型进入 **生图辅助模型** 卡片选择器的标记。仅在上游端点确实支持生图时启用。
+
+复选框注入到每个用户自有的 `llm-pi-ai` 模型行，且**始终可见**——无需展开行的容量区域。**正在添加**的模型行会立即获得可用的复选框：勾选的标记先在浏览器中记录，待页面保存新模型（点 Apply）时一并写入该模型的设置，因此可以在添加模型的同时设置图片能力，而不必先保存。无法携带标记的行会显示说明而非静默缺失：DeepSeek 官方（或其他非 pi-ai 适配器）行提示标记仅限 `llm-pi-ai`；尚未保存到用户区的 pi-ai 目录行提示先保存模型。
 
 ## 说明
 
