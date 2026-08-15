@@ -18,6 +18,7 @@ import { registerSubagentRouter } from './subagent-router.js';
 import { installTitleRouter, titleRoute } from './title-router.js';
 import { installCompactRouter } from './compact-router.js';
 import { installCompressionEngine } from './compress-engine.js';
+import { registerImagegenTool } from './imagegen-tool.js';
 
 export { Config, PLUGIN_NAME, resolvePluginConfig } from './config.js';
 export { registerVisionTool } from './vision-tool.js';
@@ -27,12 +28,13 @@ export { registerSubagentRouter } from './subagent-router.js';
 export { installTitleRouter, titleRoute } from './title-router.js';
 export { installCompactRouter, compactRoute } from './compact-router.js';
 export { CompressEngine, installCompressionEngine } from './compress-engine.js';
+export { registerImagegenTool } from './imagegen-tool.js';
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = PLUGIN_NAME;
 
 /** Services required by `inspect_image`, compaction routing, and compression. */
-export const inject = ['llm', 'tools', 'systemPrompt', 'attachments', 'fs'];
+export const inject = ['llm', 'tools', 'systemPrompt', 'attachments', 'fs', 'settings'];
 
 /** User-settings namespace owning the whole plugin section. */
 const NS = settingsNamespace(PLUGIN_NAME);
@@ -140,6 +142,23 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeSubagentRouter();
   };
 
+  let imagegenToolDisposer: (() => void) | undefined;
+  const disposeImagegenTool = (): void => {
+    const disposer = imagegenToolDisposer;
+    imagegenToolDisposer = undefined;
+    disposer?.();
+  };
+  const reconcileImagegenTool = (): void => {
+    const imagegen = resolved().imagegen;
+    if (imagegen.enabled && imagegen.provider !== undefined && imagegen.model !== undefined) {
+      if (imagegenToolDisposer === undefined) {
+        imagegenToolDisposer = registerImagegenTool(ctx, resolved);
+      }
+      return;
+    }
+    disposeImagegenTool();
+  };
+
   // The title router mirrors the compaction router: always installed, but a
   // pure pass-through until a complete route is configured.
   const disposeTitleRouter = installTitleRouter(ctx, resolved);
@@ -154,6 +173,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
     disposeHandoff();
     disposeApproveRouter();
     disposeSubagentRouter();
+    disposeImagegenTool();
     disposeTitleRouter();
     approveStateDisposer();
   }, 'dsh-auxiliary: vision tool, handoff, and approval-router lifecycle');
@@ -166,6 +186,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
       reconcileVisionTool();
       reconcileHandoff();
       reconcileApproveRouter();
+      reconcileImagegenTool();
     },
     validate: resolvePluginConfig
   });
@@ -174,6 +195,7 @@ export function apply(ctx: Context, config: PluginConfig): void {
   reconcileHandoff();
   reconcileApproveRouter();
   reconcileSubagentRouter();
+  reconcileImagegenTool();
   installCompactRouter(ctx, resolved);
   if (resolved().engine.enabled) {
     installCompressionEngine(ctx, resolved);
