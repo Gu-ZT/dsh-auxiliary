@@ -230,12 +230,16 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
   }));
   const disposeDescribe = ctx.tools.register(defineTool({
     name: 'describe_image',
-    description: 'Get the content of an image attached to this chat as a text reference. The conversation contains a reference like [image: {...}]; pass the exact JSON inside it. Returns the selected vision model\'s answer as text, which becomes part of the conversation.',
+    description: 'Get the content of an image attached to this chat as a text reference. The conversation contains a reference like [image: {...}]; pass the exact JSON inside it, and optionally a question or instruction to steer what the vision model should look for. Returns the selected vision model\'s answer as text, which becomes part of the conversation.',
     parameters: {
       ref: {
         type: 'string',
         required: true,
         description: 'The exact JSON from the [image: ...] reference in the conversation (attachmentId, mediaType, bytes, width, height).'
+      },
+      question: {
+        type: 'string',
+        description: 'Optional instruction steering what the vision model should describe or answer about the image. Defaults to a general detailed description.'
       }
     },
     output: {
@@ -253,9 +257,24 @@ export function registerVisionTool(ctx: Context, get: () => ResolvedPluginConfig
     },
     timeoutMs: get().tool.timeoutMs,
     async execute(args, exec) {
-      const ref = parseImageRef(args.ref);
+      const value = args as { ref?: unknown; question?: unknown } | null;
+      if (value === null || typeof value !== 'object' || typeof value.ref !== 'string') {
+        throw new ToolArgsError(['describe_image: "ref" must be the exact JSON from the [image: ...] reference in the conversation']);
+      }
+      if (value.question !== undefined && typeof value.question !== 'string') {
+        throw new ToolArgsError(['describe_image: "question" must be a string when present']);
+      }
+      const ref = parseImageRef(value.ref);
       const stored = await ctx.attachments.readImage(ref, exec.signal);
-      const answer = await askVision(ctx, get, ref, DEFAULT_QUESTION, exec.signal, exec.agent?.session.id, 'describe_image');
+      const answer = await askVision(
+        ctx,
+        get,
+        ref,
+        typeof value.question === 'string' && value.question.trim().length > 0 ? value.question.trim() : DEFAULT_QUESTION,
+        exec.signal,
+        exec.agent?.session.id,
+        'describe_image',
+      );
       return { content: answer.text, name: stored.ref.name ?? ref.attachmentId, ...(answer.truncated ? { truncated: true } : {}) };
     }
   }));
