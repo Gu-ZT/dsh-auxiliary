@@ -22,7 +22,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment';
-import { PLUGIN_NAME, type ResolvedPluginConfig } from './config.js';
+import { PLUGIN_ID, PLUGIN_NAME, type ResolvedPluginConfig } from './config.js';
 
 /** The llm-pi-ai settings namespace that owns the provider routes. */
 const LLM_PI_AI_NS = settingsNamespace('llm-pi-ai');
@@ -241,7 +241,7 @@ export function registerImagegenTool(ctx: Context, get: () => ResolvedPluginConf
         } else {
           continue;
         }
-        const file = join(dir, `${PLUGIN_NAME}-${stamp}-${index + 1}.png`);
+        const file = join(dir, `${PLUGIN_ID}-${stamp}-${index + 1}.png`);
         await writeFile(file, buffer);
         paths.push(file);
         const attachment = await ctx.attachments.saveImage({

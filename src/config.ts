@@ -10,8 +10,19 @@ import z from '@deepseek-ai/schemastery';
 import { deepFreeze } from '@deepseek-ai/dsh-llm';
 import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout';
 
-/** Stable plugin id recorded with plugin-sourced messages and tool guidance. */
-export const PLUGIN_NAME = 'dsh-auxiliary';
+/**
+ * Stable plugin id recorded with plugin-sourced messages and tool guidance.
+ * This is the cordis plugin name / npm package name.
+ */
+export const PLUGIN_NAME = '@dsh-plugin/dsh-auxiliary';
+
+/**
+ * Short kebab-case id for identifiers that cannot carry a scoped npm name:
+ * the settings namespace (`settingsNamespace` accepts only `[a-z0-9-]`) and
+ * generated file-name prefixes. Keeping it stable preserves already-saved
+ * user settings across the package rename.
+ */
+export const PLUGIN_ID = 'dsh-auxiliary';
 
 export const DEFAULT_VISION_MAX_TOKENS = 4096;
 export const DEFAULT_MAX_IMAGE_BYTES = 10 * 1024 * 1024;

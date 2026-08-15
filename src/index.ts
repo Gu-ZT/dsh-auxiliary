@@ -10,7 +10,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings';
-import { Config, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type ResolvedPluginConfig } from './config.js';
+import { Config, PLUGIN_ID, PLUGIN_NAME, resolvePluginConfig, type PluginConfig, type ResolvedPluginConfig } from './config.js';
 import { registerVisionTool } from './vision-tool.js';
 import { registerImageHandoff } from './image-handoff.js';
 import { registerApproveRouter, registerApproveStateEndpoint, isApprovePluginInstalled, isApproveReviewCall } from './approve-router.js';
@@ -36,8 +36,13 @@ export const name = PLUGIN_NAME;
 /** Services required by `inspect_image`, compaction routing, and compression. */
 export const inject = ['llm', 'tools', 'systemPrompt', 'attachments', 'fs', 'settings', 'credentials'];
 
-/** User-settings namespace owning the whole plugin section. */
-const NS = settingsNamespace(PLUGIN_NAME);
+/**
+ * User-settings namespace owning the whole plugin section. Deliberately the
+ * short `PLUGIN_ID`, not the scoped `PLUGIN_NAME`: `settingsNamespace` only
+ * accepts `[a-z0-9-]`, and keeping the old value preserves already-saved user
+ * settings across the package rename.
+ */
+const NS = settingsNamespace(PLUGIN_ID);
 
 /**
  * Dormant directory entry that exposes this plugin's settings namespace to the

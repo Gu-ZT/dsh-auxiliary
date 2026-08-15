@@ -1,5 +1,5 @@
 {
-  "name": "dsh-auxiliary",
+  "name": "@dsh-plugin/dsh-auxiliary",
   "version": "0.4.0",
   "description": "DeepSeek Harness plugin that uses configured model providers for image analysis and context compaction.",
   "type": "module",
@@ -33,7 +33,7 @@
   "license": "LGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Gu-ZT/dsh-auxiliary.git"
+    "url": "git+https://github.com/dsh-plugins/dsh-auxiliary.git"
   },
   "keywords": [
     "deepseek-harness",
