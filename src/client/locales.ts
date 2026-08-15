@@ -43,6 +43,10 @@ export const zh = {
   imageGenDescription: '标记该模型可生成图片，供辅助生图功能选择模型。',
   /** Loading state of an injected image-generation checkbox. */
   imageGenLoading: '正在读取图片生成声明…',
+  /** Notice on model rows that can never carry the capability marks (non-pi-ai adapters). */
+  imageCapabilityUnsupported: '此适配器不支持图片能力标记，仅用户配置的 llm-pi-ai 模型支持。',
+  /** Notice on pi-ai catalog rows that are not yet saved into the user section. */
+  imageCapabilitySaveFirst: '保存该模型为自定义模型后即可标记图片输入/生成能力。',
   /** Auxiliary image-generation feature card heading. */
   imagegenTitle: '生图辅助模型',
   /** Auxiliary image-generation feature card explanation. */
@@ -134,6 +138,8 @@ export const en: Record<AuxiliaryKey, string> = {
   imageGenToggle: 'Allow image generation',
   imageGenDescription: 'Marks the model as able to generate images, for auxiliary image-generation features to pick from.',
   imageGenLoading: 'Reading the image-generation declaration…',
+  imageCapabilityUnsupported: 'This adapter does not support image capability marks; only user-configured llm-pi-ai models can be marked.',
+  imageCapabilitySaveFirst: 'Save this model as a custom model to mark image input/generation capabilities.',
   imagegenTitle: 'Image-generation model',
   imagegenDescription: 'Pick a dedicated model route for auxiliary image generation; only models marked "Allow image generation" on the Models page are offered.',
   imagegenToggle: 'Enable auxiliary image generation',
