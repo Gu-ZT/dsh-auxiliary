@@ -247,6 +247,7 @@ export function startModelCatalogInjection(
 ): () => void {
   let entries: Array<{ provider: string; model: string }> = [];
   let scheduled = false;
+  let refreshTimer: number | undefined;
   let disposed = false;
 
   const run = (): void => {
@@ -255,13 +256,37 @@ export function startModelCatalogInjection(
   };
 
   const schedule = (): void => {
-    if (scheduled || disposed) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
+    if (disposed) return;
+    // Sweep immediately with the current rows (cheap DOM pass)…
+    if (!scheduled) {
+      scheduled = true;
+      requestAnimationFrame(() => {
+        scheduled = false;
+        if (disposed) return;
+        run();
+      });
+    }
+    // …and re-read the settings document after the DOM settles so rows saved
+    // while the page stayed open (newly added models) get injected too. The
+    // settings API has no change subscription, so a debounced re-read is the
+    // cheapest reliable trigger.
+    if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(() => {
+      refreshTimer = undefined;
       if (disposed) return;
-      run();
-    });
+      void piAiModelEntries(api).then((next) => {
+        if (disposed) return;
+        const changed = next.length !== entries.length
+          || next.some((entry, index) => {
+            const current = entries[index];
+            return current === undefined || current.provider !== entry.provider || current.model !== entry.model;
+          });
+        if (changed) {
+          entries = next;
+          run();
+        }
+      }).catch(() => { /* keep the last known rows */ });
+    }, 300);
   };
 
   const refreshEntries = (): void => {
@@ -279,6 +304,7 @@ export function startModelCatalogInjection(
 
   return () => {
     disposed = true;
+    if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
     observer.disconnect();
   };
 }
