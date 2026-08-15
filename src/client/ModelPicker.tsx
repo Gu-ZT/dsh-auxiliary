@@ -1,9 +1,12 @@
 /**
  * Provider-grouped model picker used by the auxiliary feature cards.
  *
- * The popup stays inside this component's DOM root, but uses fixed viewport
- * coordinates so it is not clipped by a settings card or an ancestor scroll
- * container. It deliberately owns no model data or persistence behavior.
+ * The popup renders through a portal into `document.body`: fixed viewport
+ * coordinates then stay relative to the viewport even when an ancestor of the
+ * trigger applies a CSS transform (which would otherwise re-base `fixed`
+ * children), and no settings card or scroll container clips it. The design
+ * tokens the popup reads are defined on `body`, so the portal keeps inheriting
+ * them. The component deliberately owns no model data or persistence behavior.
  *
  * @module dsh-auxiliary/client/ModelPicker
  */
@@ -17,6 +20,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type { AuxRoute, ModelProviderGroup } from './api.js';
 
 /** Props for the internal provider-grouped model picker. */
@@ -317,9 +321,11 @@ export function ModelPicker({
     if (!open) return;
     const onOutsidePointerDown = (event: PointerEvent): void => {
       const target = event.target;
-      if (!(target instanceof Node) || !rootRef.current?.contains(target)) {
-        close(true);
-      }
+      if (!(target instanceof Node)) return;
+      // The popup lives in a body portal, so containment must cover both roots.
+      const inside = rootRef.current?.contains(target) === true
+        || popupRef.current?.contains(target) === true;
+      if (!inside) close(true);
     };
     document.addEventListener('pointerdown', onOutsidePointerDown, true);
     window.addEventListener('resize', updatePosition);
@@ -411,7 +417,7 @@ export function ModelPicker({
         <span style={triggerTextStyle}>{triggerText}</span>
         <span style={triggerHintStyle} aria-hidden="true">⌄</span>
       </button>
-      {open ? (
+      {open ? createPortal(
         <div
           ref={popupRef}
           id={`${id}-listbox`}
@@ -457,7 +463,8 @@ export function ModelPicker({
               </div>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       ) : null}
       {stale ? (
         <p role="status" style={unavailableStyle}>
