@@ -108,9 +108,14 @@ export function registerApproveRouter(ctx: Context, get: () => ResolvedPluginCon
 
 /** Read the live permission-preset service without throwing when it is absent. */
 function permissionPresetNames(ctx: Context): readonly string[] | undefined {
-  // Accessing an unregistered service throws; treat that as "no service".
+  // The permissionPresets service is fiber-isolated: plugins that do not inject
+  // it get `cannot get property "permissionPresets" without inject` from their
+  // own ctx. The root context sees the global service table, so it reaches the
+  // instance without making permissionPresets a hard dependency. An absent
+  // service (headless profiles without the preset registry) still reads as
+  // undefined rather than throwing.
   try {
-    const service = (ctx as Context & { permissionPresets?: { names: readonly string[] } }).permissionPresets;
+    const service = (ctx.root as Context & { permissionPresets?: { names: readonly string[] } }).permissionPresets;
     return service === undefined ? undefined : service.names;
   } catch {
     return undefined;
