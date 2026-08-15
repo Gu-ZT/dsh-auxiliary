@@ -219,6 +219,7 @@ export function ModelPicker({
 }: ModelPickerProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<PopupPosition>(initialPosition);
+  const [direction, setDirection] = useState<'below' | 'above'>('below');
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const popupRef = useRef<HTMLDivElement | null>(null);
@@ -262,6 +263,7 @@ export function ModelPicker({
     const below = Math.max(80, viewportHeight - rect.bottom - margin);
     const above = Math.max(80, rect.top - margin);
     const openBelow = below >= above;
+    setDirection(openBelow ? 'below' : 'above');
     const maxHeight = Math.min(360, openBelow ? below : above);
     const top = openBelow
       ? Math.min(viewportHeight - margin, rect.bottom + 4)
@@ -322,11 +324,26 @@ export function ModelPicker({
   }, [choices, open, updatePosition, value.model, value.provider]);
 
   // Re-measure after layout settles (fonts, option rows) so the popup tracks
-  // the trigger even when the first paint changed the geometry.
+  // the trigger even when the first paint changed the geometry. When opening
+  // upward, the initial top assumed the full maxHeight; once the popup is laid
+  // out, snap it flush against the trigger's top using the real height so a
+  // short list does not float below the trigger with a gap above it.
   useLayoutEffect(() => {
     if (!open) return;
     updatePosition();
-  }, [open, updatePosition]);
+    const popup = popupRef.current;
+    const trigger = triggerRef.current;
+    if (popup !== null && trigger !== null && direction === 'above') {
+      const rect = trigger.getBoundingClientRect();
+      const actual = popup.offsetHeight;
+      const margin = 8;
+      setPosition((previous) => ({
+        ...previous,
+        top: Math.max(margin, rect.top - actual - 4),
+        maxHeight: Math.min(previous.maxHeight, actual),
+      }));
+    }
+  }, [open, updatePosition, direction]);
 
   useEffect(() => {
     if (!open) return;
