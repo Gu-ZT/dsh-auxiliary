@@ -6,6 +6,16 @@
 
 English | [简体中文](README.zh_CN.md)
 
+<a href="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml">
+  <img src="https://github.com/Gu-ZT/dsh-auxiliary/actions/workflows/npm-publish.yml/badge.svg" alt="Build Status">
+</a>
+<a href="https://www.npmjs.com/package/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/v/dsh-auxiliary.svg?sanitize=true" alt="Version">
+</a>
+<a href="https://www.npmjs.com/package/dsh-auxiliary">
+  <img src="https://img.shields.io/npm/l/dsh-auxiliary.svg?sanitize=true" alt="License">
+</a>
+
 </div>
 
 `dsh-auxiliary` is a [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) plugin that adds auxiliary model capabilities on top of the harness LLM seam (`ctx.llm`), without changing the main conversation model:
@@ -19,13 +29,13 @@ English | [简体中文](README.zh_CN.md)
 
 The plugin follows the standard DSH extension points documented in the [plugin development guide](https://deepseek-harness.github.io/deepseek-harness/develop/basic/):
 
-| Feature | Extension point |
-| --- | --- |
-| Vision selection | client `api.llm.providers()` / `api.llm.models()` + `ctx.llm.stream()` (reuse existing Models routes) |
-| `inspect_image` tool | `ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section(...)` |
-| Compaction routing | `ctx.on('llm/stream', ...)` waterfall listener |
-| Compression engine | subclass hook `BasicCompactionEngine.summarize()` |
-| Auxiliary Models settings page | client `settings.section` slot (`ctx.slots.register`) |
+| Feature                        | Extension point                                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Vision selection               | client `api.llm.providers()` / `api.llm.models()` + `ctx.llm.stream()` (reuse existing Models routes) |
+| `inspect_image` tool           | `ctx.tools.register(defineTool(...))` + `ctx.systemPrompt.section(...)`                               |
+| Compaction routing             | `ctx.on('llm/stream', ...)` waterfall listener                                                        |
+| Compression engine             | subclass hook `BasicCompactionEngine.summarize()`                                                     |
+| Auxiliary Models settings page | client `settings.section` slot (`ctx.slots.register`)                                                 |
 
 Image content uses the harness `image` content block (`ImageAttachmentRef`), committed and read through the `ctx.attachments` seam, so the plugin never touches a concrete storage backend.
 
