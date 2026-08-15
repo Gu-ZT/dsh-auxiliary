@@ -137,7 +137,7 @@ export function registerImagegenTool(ctx: Context, get: () => ResolvedPluginConf
       ],
       presentationMeta: (_args, value) => value
     },
-    timeoutMs: 120000,
+    timeoutMs: 600000,
     async execute(args, exec) {
       const input = parseArgs(args);
       const imagegen = get().imagegen;
