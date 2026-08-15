@@ -17,6 +17,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis';
 import { defineTool } from '@deepseek-ai/dsh-tools';
+import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { settingsNamespace } from '@deepseek-ai/dsh-settings';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -254,6 +255,17 @@ export function registerImagegenTool(ctx: Context, get: () => ResolvedPluginConf
       if (paths.length === 0) {
         throw new Error('generate_image: none of the provider responses contained a decodable image');
       }
+      // Commit the images into the conversation as a user message so they
+      // render inline in the chat, exactly like the core read_image tool does.
+      // The tool output itself carries the image blocks too, but only a
+      // deferred context message enters durable session history.
+      if (exec.parent !== void 0) exec.deferContext(createUserMessage({
+        content: [
+          { type: 'text', text: `Generated ${paths.length} image(s):\n${paths.map((path) => `- ${path}`).join('\n')}` },
+          ...images.map((ref) => ({ type: 'image' as const, attachment: ref as unknown as ImageAttachmentRef })),
+        ],
+        source: { kind: 'plugin', plugin: PLUGIN_NAME },
+      }));
       return {
         content: `Generated ${paths.length} image(s):\n${paths.map((path) => `- ${path}`).join('\n')}`,
         paths,
