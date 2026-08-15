@@ -6,15 +6,17 @@
  *
  * @module dsh-auxiliary/client/AuxiliarySection
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { IApiClient } from '@deepseek-ai/dsh-client-connection/client';
 import type { TranslateNS } from '@deepseek-ai/dsh-client-ui-slots';
 import type { SettingsSectionOwnerProps } from '@deepseek-ai/dsh-client-ui-settings/client';
 import {
   AuxiliaryApiError,
   conflictRevision,
+  filterImageGenGroups,
   loadApproveHostState,
   loadAuxSettings,
+  loadImageGenModelKeys,
   loadModels,
   saveAuxFeature,
   type AuxFeature,
@@ -175,6 +177,8 @@ interface FeatureCardProps {
   handoffLabel?: string;
   initial: AuxFeatureSettings;
   groups: ModelCatalog['groups'];
+  /** Optional restricted model list; the image-generation card passes models marked for generation. */
+  groupsOverride?: ModelCatalog['groups'];
   disabled: boolean;
   t: TranslateNS<'dsh-auxiliary'>;
   onSave: (feature: AuxFeature, draft: AuxFeatureDraft) => Promise<void>;
@@ -191,6 +195,7 @@ function FeatureCard({
   handoffLabel,
   initial,
   groups,
+  groupsOverride,
   disabled,
   t,
   onSave,
@@ -264,7 +269,7 @@ function FeatureCard({
       <label style={fieldStyle}>
         <span style={labelStyle}>{pickerLabel}</span>
         <ModelPicker
-          groups={groups}
+          groups={groupsOverride ?? groups}
           value={draft}
           onChange={updateRoute}
           disabled={locked}
@@ -298,6 +303,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   const [settings, setSettings] = useState<AuxSettings | undefined>();
   const [revision, setRevision] = useState<number | undefined>();
   const [approveInstalled, setApproveInstalled] = useState<boolean | undefined>();
+  const [imageGenKeys, setImageGenKeys] = useState<ReadonlySet<string> | undefined>();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | undefined>();
   const [writingFeature, setWritingFeature] = useState<AuxFeature | undefined>();
@@ -322,6 +328,7 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         approve: next.approve,
         subagent: next.subagent,
         title: next.title,
+        imagegen: next.imagegen,
         revision: next.revision,
       });
   }, []);
@@ -330,7 +337,12 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
     let active = true;
     setLoading(true);
     setLoadError(undefined);
-    void Promise.allSettled([loadModels(api), loadAuxSettings(api), loadApproveHostState()]).then(([catalogResult, settingsResult, approveResult]) => {
+    void Promise.allSettled([
+      loadModels(api),
+      loadAuxSettings(api),
+      loadApproveHostState(),
+      loadImageGenModelKeys(api),
+    ]).then(([catalogResult, settingsResult, approveResult, imageGenResult]) => {
       if (!active) return;
       const errors: string[] = [];
       if (catalogResult.status === 'fulfilled') {
@@ -347,6 +359,11 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
         setApproveInstalled(approveResult.value.approvePluginInstalled);
       } else {
         setApproveInstalled(false);
+      }
+      if (imageGenResult.status === 'fulfilled') {
+        setImageGenKeys(imageGenResult.value);
+      } else {
+        setImageGenKeys(undefined);
       }
       setLoadError(errors.length === 0 ? undefined : errors.join('; '));
       setLoading(false);
@@ -386,6 +403,14 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
   const catalogFailure = catalog === undefined || catalog.failures.length === 0
     ? undefined
     : catalog.failures.map((failure) => `${failure.name} (${failure.id}): ${failure.message}`).join('; ');
+  // The image-generation card only offers models marked for image generation in
+  // the Models page; undefined keys (load failure) render an empty list.
+  const imageGenGroups = useMemo(
+    () => catalog === undefined || imageGenKeys === undefined
+      ? []
+      : filterImageGenGroups(catalog.groups, imageGenKeys),
+    [catalog, imageGenKeys],
+  );
   const settingsReady = settings?.available === true;
   const settingsWritable = settings?.writable === true;
   const cardsDisabled = !settingsReady || !settingsWritable || writingFeature !== undefined;
@@ -475,6 +500,20 @@ export function AuxiliarySection({ api, t }: AuxiliarySectionProps): JSX.Element
             usage={t('titleUsage')}
             initial={settings.title}
             groups={catalog.groups}
+            disabled={cardsDisabled}
+            t={t}
+            onSave={saveFeature}
+          />
+          <FeatureCard
+            feature="imagegen"
+            title={t('imagegenTitle')}
+            description={t('imagegenDescription')}
+            toggleLabel={t('imagegenToggle')}
+            pickerLabel={t('imagegenPickerLabel')}
+            usage={imageGenGroups.length === 0 ? t('imagegenNoModels') : t('imagegenUsage')}
+            initial={settings.imagegen}
+            groups={catalog.groups}
+            groupsOverride={imageGenGroups}
             disabled={cardsDisabled}
             t={t}
             onSave={saveFeature}

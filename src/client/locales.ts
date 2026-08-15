@@ -43,6 +43,18 @@ export const zh = {
   imageGenDescription: '标记该模型可生成图片，供辅助生图功能选择模型。',
   /** Loading state of an injected image-generation checkbox. */
   imageGenLoading: '正在读取图片生成声明…',
+  /** Auxiliary image-generation feature card heading. */
+  imagegenTitle: '生图辅助模型',
+  /** Auxiliary image-generation feature card explanation. */
+  imagegenDescription: '为辅助生图功能选择独立的模型路由，仅显示在模型设置页标记为「允许图片生成」的模型。',
+  /** Auxiliary image-generation feature switch label. */
+  imagegenToggle: '启用生图辅助模型',
+  /** Auxiliary image-generation picker label. */
+  imagegenPickerLabel: '生图模型',
+  /** Auxiliary image-generation route explanation. */
+  imagegenUsage: '开启后，辅助生图功能使用所选模型。选择器只列出在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中勾选「允许图片生成」的模型。',
+  /** Shown when no model is marked for image generation yet. */
+  imagegenNoModels: '尚未标记任何生图模型：请先在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中勾选「允许图片生成」。',
   /** Exact distinction between route selection and model capabilities. */
   visionUsage: '此路线供 inspect_image 与 describe_image 使用：前者读取 Host 上的本地图片，后者读取聊天中附加的图片（主模型不支持图片时以 [image: …] 引用呈现，主模型会主动调用 describe_image 获取内容并注入上下文）。图片输入能力请在「设置 → 模型 → 提供商 → 自定义设置 → 模型目录」中按模型声明；主聊天选择同一模型时也会使用该声明。',
   /** Compaction feature card heading. */
@@ -122,6 +134,12 @@ export const en: Record<AuxiliaryKey, string> = {
   imageGenToggle: 'Allow image generation',
   imageGenDescription: 'Marks the model as able to generate images, for auxiliary image-generation features to pick from.',
   imageGenLoading: 'Reading the image-generation declaration…',
+  imagegenTitle: 'Image-generation model',
+  imagegenDescription: 'Pick a dedicated model route for auxiliary image generation; only models marked "Allow image generation" on the Models page are offered.',
+  imagegenToggle: 'Enable auxiliary image generation',
+  imagegenPickerLabel: 'Image-generation model',
+  imagegenUsage: 'When enabled, auxiliary image-generation work uses the selected model. The picker only lists models marked "Allow image generation" under Settings → Models → Provider → Customized settings → Models.',
+  imagegenNoModels: 'No image-generation model marked yet: check "Allow image generation" under Settings → Models → Provider → Customized settings → Models first.',
   visionUsage: 'This route serves inspect_image and describe_image: the former reads local images on the Host, the latter reads images attached to the chat (when the main model is text-only they appear as [image: …] references, and the main model calls describe_image to fetch their content into the context). Declare image input per model under Settings → Models → Provider → Customized settings → Models; main chat uses the same declaration when that model is selected.',
   compactTitle: 'Context compaction',
   compactDescription: 'Controls whether `purpose: compaction` summaries use the independent compact model route.',

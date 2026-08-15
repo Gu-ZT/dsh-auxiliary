@@ -65,6 +65,8 @@ export interface AuxSettings {
   subagent: AuxFeatureSettings;
   /** `title.enabled` plus the session-title provider/model route. */
   title: AuxFeatureSettings;
+  /** `imagegen.enabled` plus the auxiliary image-generation provider/model route. */
+  imagegen: AuxFeatureSettings;
   /** Namespace revision for the next optimistic-concurrency write. */
   revision?: number;
   /** Whether the namespace is exposed by the current Host. */
@@ -80,11 +82,12 @@ export interface AuxSettingsSnapshot {
   approve: AuxFeatureSettings;
   subagent: AuxFeatureSettings;
   title: AuxFeatureSettings;
+  imagegen: AuxFeatureSettings;
   revision: number;
 }
 
 /** Feature names accepted by the atomic auxiliary settings writer. */
-export type AuxFeature = 'vision' | 'compact' | 'approve' | 'subagent' | 'title';
+export type AuxFeature = 'vision' | 'compact' | 'approve' | 'subagent' | 'title' | 'imagegen';
 
 /** Draft shape submitted by one feature card. */
 export interface AuxFeatureDraft extends AuxRoute {
@@ -323,6 +326,50 @@ export async function saveModelGenerationCapability(
   return { available: true, supported, writable: true };
 }
 
+/**
+ * List every user-owned llm-pi-ai model marked for image generation
+ * (`imageGeneration: true` in its raw row). The flag survives in the raw user
+ * section but is stripped from resolved views, so this walks `namespace.user`
+ * directly, mirroring `loadModelGenerationCapability`.
+ * @returns `provider\u0000model` keys of the marked models.
+ */
+export async function loadImageGenModelKeys(api: IApiClient): Promise<ReadonlySet<string>> {
+  const settings = valueOf(await api.settings.describe({}));
+  const namespace = settings.namespaces.find((entry) => entry.ns === 'llm-pi-ai');
+  if (namespace === undefined) return new Set();
+  const providers = recordOf(recordOf(namespace.user)?.providers);
+  if (providers === undefined) return new Set();
+  const keys = new Set<string>();
+  for (const [provider, profile] of Object.entries(providers)) {
+    const models = recordOf(profile)?.models;
+    if (!Array.isArray(models)) continue;
+    for (const raw of models) {
+      const row = recordOf(raw);
+      if (row === undefined || row.imageGeneration !== true || typeof row.id !== 'string') continue;
+      keys.add(`${provider}\u0000${row.id}`);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Retain only the provider groups whose models are marked for image
+ * generation, preserving group order and provider metadata. Groups left with
+ * no marked models are dropped.
+ */
+export function filterImageGenGroups(
+  groups: readonly ModelProviderGroup[],
+  keys: ReadonlySet<string>,
+): readonly ModelProviderGroup[] {
+  const filtered: ModelProviderGroup[] = [];
+  for (const group of groups) {
+    const models = group.models.filter((model) => keys.has(`${group.id}\u0000${model.id}`));
+    if (models.length === 0) continue;
+    filtered.push({ ...group, models });
+  }
+  return filtered;
+}
+
 interface AuxNamespaceValue {
   vision?: {
     provider?: string;
@@ -348,6 +395,11 @@ interface AuxNamespaceValue {
     model?: string;
   };
   title?: {
+    enabled?: boolean;
+    provider?: string;
+    model?: string;
+  };
+  imagegen?: {
     enabled?: boolean;
     provider?: string;
     model?: string;
@@ -389,6 +441,11 @@ function snapshotOf(view: SettingsNamespaceView): AuxSettingsSnapshot {
       provider: value.title?.provider,
       model: value.title?.model,
     },
+    imagegen: {
+      enabled: value.imagegen?.enabled ?? false,
+      provider: value.imagegen?.provider,
+      model: value.imagegen?.model,
+    },
     revision: view.revision,
   };
 }
@@ -404,6 +461,7 @@ export async function loadAuxSettings(api: IApiClient): Promise<AuxSettings> {
       approve: { enabled: false },
       subagent: { enabled: false },
       title: { enabled: false },
+      imagegen: { enabled: false },
       available: false,
       writable: value.writable,
     };
@@ -485,13 +543,21 @@ export async function saveAuxFeature(
               model: normalized.model,
             },
           }
-          : {
-            compact: {
-              enabled: normalized.enabled,
-              provider: normalized.provider,
-              model: normalized.model,
-            },
-          };
+          : feature === 'imagegen'
+            ? {
+              imagegen: {
+                enabled: normalized.enabled,
+                provider: normalized.provider,
+                model: normalized.model,
+              },
+            }
+            : {
+              compact: {
+                enabled: normalized.enabled,
+                provider: normalized.provider,
+                model: normalized.model,
+              },
+            };
   const view = valueOf(await api.settings.update({
     ns: 'dsh-auxiliary',
     patch,

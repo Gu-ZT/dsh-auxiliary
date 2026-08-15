@@ -68,6 +68,11 @@ const Config = z.object({
     provider: z.string(),
     model: z.string()
   }),
+  imagegen: z.object({
+    enabled: z.boolean().default(false).description('Route auxiliary image-generation work to a dedicated provider/model pair marked for image generation.'),
+    provider: z.string(),
+    model: z.string()
+  }),
   engine: z.object({
     enabled: z.boolean().default(false),
     thresholdRatio: z.number().step(0.01).min(0.01).max(0.99).default(0.8),
@@ -127,6 +132,13 @@ export interface ResolvedTitleConfig {
   readonly model: string | undefined;
 }
 
+/** Resolved auxiliary image-generation routing policy (dedicated generation model). */
+export interface ResolvedImagegenConfig {
+  readonly enabled: boolean;
+  readonly provider: string | undefined;
+  readonly model: string | undefined;
+}
+
 /** Resolved auxiliary compression-engine policy. */
 export interface ResolvedEngineConfig {
   readonly enabled: boolean;
@@ -147,6 +159,7 @@ export interface ResolvedPluginConfig {
   readonly approve: ResolvedApproveConfig;
   readonly subagent: ResolvedSubagentConfig;
   readonly title: ResolvedTitleConfig;
+  readonly imagegen: ResolvedImagegenConfig;
   readonly engine: ResolvedEngineConfig;
 }
 
@@ -158,6 +171,7 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const approve = config.approve ?? {};
   const subagent = config.subagent ?? {};
   const title = config.title ?? {};
+  const imagegen = config.imagegen ?? {};
   const engine = config.engine ?? {};
 
   const visionProvider = typeof vision.provider === 'string' && vision.provider.length > 0 ? vision.provider : undefined;
@@ -188,6 +202,12 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
   const titleModel = typeof title.model === 'string' && title.model.length > 0 ? title.model : undefined;
   if (Boolean(titleProvider) !== Boolean(titleModel)) {
     throw new Error('dsh-auxiliary: title.provider and title.model must be set together');
+  }
+
+  const imagegenProvider = typeof imagegen.provider === 'string' && imagegen.provider.length > 0 ? imagegen.provider : undefined;
+  const imagegenModel = typeof imagegen.model === 'string' && imagegen.model.length > 0 ? imagegen.model : undefined;
+  if (Boolean(imagegenProvider) !== Boolean(imagegenModel)) {
+    throw new Error('dsh-auxiliary: imagegen.provider and imagegen.model must be set together');
   }
 
   const thresholdRatio = engine.thresholdRatio ?? 0.8;
@@ -227,6 +247,11 @@ export function resolvePluginConfig(config: PluginConfig): ResolvedPluginConfig 
       enabled: title.enabled ?? false,
       provider: titleProvider,
       model: titleModel
+    },
+    imagegen: {
+      enabled: imagegen.enabled ?? false,
+      provider: imagegenProvider,
+      model: imagegenModel
     },
     engine: {
       enabled: engine.enabled ?? false,
