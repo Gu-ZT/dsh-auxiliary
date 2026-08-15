@@ -38,6 +38,26 @@ English | [简体中文](README.zh_CN.md)
 
 All routes are configured in **Settings → Auxiliary Models** (the plugin ships that settings section) and take effect immediately on save — no restart, no rebuild of the conversation.
 
+## Installation
+
+Copy the block below and paste it to your DSH agent (the assistant in this web
+GUI). The agent performs the install and verification for you — no manual npm
+or profile editing needed:
+
+```text
+Install the dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `dsh-auxiliary`; use the GitHub source `github:Gu-ZT/dsh-auxiliary`, or `file:<path>` for local development.
+
+Steps:
+1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
+2. The package declares a `prepack` build script. If pnpm fails with `ERR_PNPM_IGNORED_BUILDS`, approve the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) and retry the add.
+3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `dsh-auxiliary` (`name: dsh-auxiliary`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
+4. Verify `node_modules/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
+5. Do not start the profile — install and verify only, then report what you changed.
+```
+
+Then open **Settings → Auxiliary Models** in the web UI to configure the
+routes, and mark the models you want to use in **Settings → Models**.
+
 ## Features in detail
 
 ### Vision understanding and `inspect_image`
@@ -208,26 +228,6 @@ The plugin registers its own settings namespace (`dsh-auxiliary`) with a schemas
 ### 5. Everything reconfigures live
 
 Each feature is owned by a `reconcile*()` + disposer pair: on every settings change the plugin re-resolves the config and registers or disposes exactly the pieces whose conditions changed. Saving a route in the web UI takes effect immediately.
-
-## Installation
-
-Copy the block below and paste it to your DSH agent (the assistant in this web
-GUI). The agent performs the install and verification for you — no manual npm
-or profile editing needed:
-
-```text
-Install the dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `dsh-auxiliary`; use the GitHub source `github:Gu-ZT/dsh-auxiliary`, or `file:<path>` for local development.
-
-Steps:
-1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
-2. The package declares a `prepack` build script. If pnpm fails with `ERR_PNPM_IGNORED_BUILDS`, approve the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) and retry the add.
-3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `dsh-auxiliary` (`name: dsh-auxiliary`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
-4. Verify `node_modules/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
-5. Do not start the profile — install and verify only, then report what you changed.
-```
-
-Then open **Settings → Auxiliary Models** in the web UI to configure the
-routes, and mark the models you want to use in **Settings → Models**.
 
 ## Configuration
 

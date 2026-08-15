@@ -38,6 +38,23 @@
 
 所有路由都在 **设置 → 辅助模型** 中配置（插件自带该设置分区），保存后立即生效——无需重启，无需重建会话。
 
+## 安装
+
+复制下面的内容，粘贴给 DSH Agent（本 Web GUI 中的助手）。由 Agent 帮你完成安装与验证，无需手动执行 npm 或编辑 profile 配置：
+
+```text
+把 dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `dsh-auxiliary`；使用 GitHub 源 `github:Gu-ZT/dsh-auxiliary`，本地开发可用 `file:<路径>`。
+
+步骤：
+1. 添加插件依赖：`dsh plugin --profile <PROFILE> add dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
+2. 该包声明了 `prepack` 构建脚本。若 pnpm 报 `ERR_PNPM_IGNORED_BUILDS`，在 profile 的 `pnpm-workspace.yaml`（`allowBuilds`）中批准构建后重试。
+3. 确认 profile 的 `cordis.patch.yml` 中有 dsh-auxiliary 的 insert 条目（`name: dsh-auxiliary`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
+4. 验证 `node_modules/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
+5. 不要启动 profile——只安装并验证，然后报告你改动了什么。
+```
+
+安装完成后，在 Web 的 **设置 → 辅助模型** 中配置各路由，并在 **设置 → 模型** 中标记要使用的模型。
+
 ## 功能详解
 
 ### 视觉理解与 `inspect_image`
@@ -208,23 +225,6 @@ harness 的 LLM 抽象只处理文本，因此生图直接对话提供商的 **O
 ### 5. 全部配置即时生效
 
 每个功能由一个 `reconcile*()` + disposer 对管理：每次设置变更后插件重新解析配置，只注册或注销条件发生变化的部分。在 Web UI 保存路由立即生效。
-
-## 安装
-
-复制下面的内容，粘贴给 DSH Agent（本 Web GUI 中的助手）。由 Agent 帮你完成安装与验证，无需手动执行 npm 或编辑 profile 配置：
-
-```text
-把 dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `dsh-auxiliary`；使用 GitHub 源 `github:Gu-ZT/dsh-auxiliary`，本地开发可用 `file:<路径>`。
-
-步骤：
-1. 添加插件依赖：`dsh plugin --profile <PROFILE> add dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
-2. 该包声明了 `prepack` 构建脚本。若 pnpm 报 `ERR_PNPM_IGNORED_BUILDS`，在 profile 的 `pnpm-workspace.yaml`（`allowBuilds`）中批准构建后重试。
-3. 确认 profile 的 `cordis.patch.yml` 中有 dsh-auxiliary 的 insert 条目（`name: dsh-auxiliary`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
-4. 验证 `node_modules/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
-5. 不要启动 profile——只安装并验证，然后报告你改动了什么。
-```
-
-安装完成后，在 Web 的 **设置 → 辅助模型** 中配置各路由，并在 **设置 → 模型** 中标记要使用的模型。
 
 ## 配置
 
