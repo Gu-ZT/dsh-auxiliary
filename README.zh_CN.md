@@ -46,9 +46,9 @@
 把 @dsh-plugin/dsh-auxiliary 插件安装到我指定的 profile（如果我没说，先问我）。npm 包名为 `@dsh-plugin/dsh-auxiliary`；使用 GitHub 源 `github:dsh-plugins/dsh-auxiliary`，本地开发可用 `file:<路径>`。
 
 步骤：
-1. 添加插件依赖：`dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary`（或我 profile 对应的插件管理器命令）。
+1. 添加插件依赖：`dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary`（或我 profile 对应的插件管理器命令）。0.4.1 起该包是 bundle 插件（声明了 `dsh.bundle.patch`），`dsh plugin add` 会自动把它追加进 `dsh.profile.bundles`，无需再手动编辑 `cordis.patch.yml`。
 2. 该包声明了 `prepack` 构建脚本。若 pnpm 报 `ERR_PNPM_IGNORED_BUILDS`，在 profile 的 `pnpm-workspace.yaml`（`allowBuilds`）中批准构建后重试。
-3. 确认 profile 的 `cordis.patch.yml` 中有 @dsh-plugin/dsh-auxiliary 的 insert 条目（`name: '@dsh-plugin/dsh-auxiliary'`，`config: { tool: { enabled: true } }`）。`dsh plugin add` 有时只更新 `package.json`——若 insert 缺失，请自行补上。
+3. 如果该 profile 之前是通过 `cordis.patch.yml` 里的手动 insert 行加载本插件（0.4.1 之前的做法），请**删除那一行**——bundle 层现在负责挂载，两者并存会导致插件被挂载两次。
 4. 验证 `node_modules/@dsh-plugin/dsh-auxiliary` 存在已构建的 `lib/` 目录（至少 `lib/index.js` 与 `lib/client.js`）。若构建产物缺失，在插件目录运行 `npm run build` 后重新 add。
 5. 不要启动 profile——只安装并验证，然后报告你改动了什么。
 ```

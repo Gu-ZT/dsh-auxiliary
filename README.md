@@ -48,9 +48,9 @@ or profile editing needed:
 Install the @dsh-plugin/dsh-auxiliary plugin into the profile I specify (or ask me if I didn't name one). The npm package name is `@dsh-plugin/dsh-auxiliary`; use the GitHub source `github:dsh-plugins/dsh-auxiliary`, or `file:<path>` for local development.
 
 Steps:
-1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary` (or the equivalent plugin-manager command for my profile).
+1. Add the plugin dependency: `dsh plugin --profile <PROFILE> add @dsh-plugin/dsh-auxiliary` (or the equivalent plugin-manager command for my profile). Since 0.4.1 the package is a bundle plugin (declares `dsh.bundle.patch`), so `dsh plugin add` also appends it to `dsh.profile.bundles` automatically — no manual `cordis.patch.yml` insert needed.
 2. The package declares a `prepack` build script. If pnpm fails with `ERR_PNPM_IGNORED_BUILDS`, approve the build in the profile's `pnpm-workspace.yaml` (`allowBuilds`) and retry the add.
-3. Make sure the profile's `cordis.patch.yml` contains an insert entry for `@dsh-plugin/dsh-auxiliary` (`name: '@dsh-plugin/dsh-auxiliary'`, `config: { tool: { enabled: true } }`). `dsh plugin add` sometimes only updates `package.json` — if the insert is missing, add it yourself.
+3. If this profile previously loaded the plugin through a manual insert row in `cordis.patch.yml` (pre-0.4.1 style), REMOVE that row — the bundle layer now mounts the plugin, and keeping both would mount it twice.
 4. Verify `node_modules/@dsh-plugin/dsh-auxiliary` holds a built `lib/` directory (at least `lib/index.js` and `lib/client.js`). If the build artifacts are missing, run `npm run build` in the plugin directory and re-add.
 5. Do not start the profile — install and verify only, then report what you changed.
 ```
