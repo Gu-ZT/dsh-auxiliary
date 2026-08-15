@@ -15,6 +15,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { settingsNamespace } from '@deepseek-ai/dsh-settings';
+import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PLUGIN_NAME, type ResolvedPluginConfig } from './config.js';
@@ -94,14 +95,17 @@ export function registerImagegenTool(ctx: Context, get: () => ResolvedPluginConf
         { providers?: Record<string, { baseURL?: string; apiKeyEnv?: string }> } | undefined;
       const provider = namespace?.providers?.[imagegen.provider];
       const baseURL = provider?.baseURL;
-      const apiKey = provider?.apiKeyEnv === undefined
-        ? undefined
-        : typeof process.env[provider.apiKeyEnv] === 'string'
-          ? process.env[provider.apiKeyEnv]
-          : undefined;
+      // apiKeyEnv is a credential reference; resolve it through the harness
+      // credential seam (env / file / user-env layers), never process.env.
+      let apiKey: string | undefined;
+      const ref = provider?.apiKeyEnv;
+      if (ref !== undefined && ref.length > 0) {
+        const resolved = await ctx.credentials.resolve(credentialRef(ref));
+        apiKey = resolved?.value;
+      }
       if (baseURL === undefined || baseURL.length === 0 || apiKey === undefined) {
         throw new Error(
-          `generate_image: provider "${imagegen.provider}" is missing a baseURL or its API key environment variable is not set`,
+          `generate_image: provider "${imagegen.provider}" is missing a baseURL or its API key is not configured (${ref ?? 'no apiKeyEnv'})`,
         );
       }
       const endpoint = `${baseURL.replace(/\/+$/, '')}/images/generations`;

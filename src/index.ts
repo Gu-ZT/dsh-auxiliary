@@ -34,7 +34,7 @@ export { registerImagegenTool } from './imagegen-tool.js';
 export const name = PLUGIN_NAME;
 
 /** Services required by `inspect_image`, compaction routing, and compression. */
-export const inject = ['llm', 'tools', 'systemPrompt', 'attachments', 'fs', 'settings'];
+export const inject = ['llm', 'tools', 'systemPrompt', 'attachments', 'fs', 'settings', 'credentials'];
 
 /** User-settings namespace owning the whole plugin section. */
 const NS = settingsNamespace(PLUGIN_NAME);
