@@ -30,7 +30,7 @@
 | 图片转交 | 主模型为纯文本时，聊天图片经 `describe_image` 存活 | 视觉理解卡片 → **图片转交** |
 | 上下文压缩 | 摘要调用（`purpose: 'compaction'`）使用独立模型 | 辅助模型 → **上下文压缩** |
 | 压缩引擎（可选） | 用显式压缩提示词替换默认压缩后端 | 配置中的 `engine.enabled` |
-| 审批模型 | dsh-command-approve-for-me 的审查使用独立模型 | 辅助模型 → **审批模型** |
+| 审批模型 | @dsh-plugin/dsh-approve-for-me 的审查使用独立模型 | 辅助模型 → **审批模型** |
 | 子代理模型 | 委派子代理使用独立模型 | 辅助模型 → **子代理模型** |
 | 标题生成模型 | 会话标题（`purpose: 'session-title'`）使用独立模型 | 辅助模型 → **标题生成模型** |
 | 生图辅助模型 | `generate_image` 工具：经 OpenAI 兼容 images API 生成图片 | 辅助模型 → **生图辅助模型** |
@@ -104,9 +104,9 @@ compact:
 
 **压缩引擎**（可选）：`engine.enabled: true` 会用 `BasicCompactionEngine` 子类替换默认压缩后端，以显式的上下文压缩指令驱动摘要（见 `engine.compressPrompt`）。它复用 compact 路由，不增加第三条模型路由；与 `@deepseek-ai/dsh-compaction-basic` 互斥——插件检测到冲突会跳过引擎并告警。
 
-### 审批模型（dsh-command-approve-for-me 联动）
+### 审批模型（@dsh-plugin/dsh-approve-for-me 联动）
 
-[dsh-command-approve-for-me](https://github.com/ZhuRuoLing/dsh-command-approve-for-me) 提供类 Codex 的自动审批；在 `review` 模式下由轻量审查模型裁决每条审批提示。**审批模型** 卡片为审查提供独立模型：
+[@dsh-plugin/dsh-approve-for-me](https://github.com/dsh-plugins/dsh-approve-for-me) 提供类 Codex 的自动审批；在 `review` 模式下由轻量审查模型裁决每条审批提示。**审批模型** 卡片为审查提供独立模型：
 
 ```yaml
 approve:
@@ -245,7 +245,7 @@ harness 的 LLM 抽象只处理文本，因此生图直接对话提供商的 **O
       provider: ""                         # 示例：deepseek-official（已注册的提供商路由 id）
       model: ""                            # 示例：deepseek-chat（该提供商下的模型 id）
     approve:
-      enabled: false                       # 为 dsh-command-approve-for-me 的审查提供独立模型
+      enabled: false                       # 为 @dsh-plugin/dsh-approve-for-me 的审查提供独立模型
       provider: ""                         # 示例：deepseek-official（已注册的提供商路由 id）
       model: ""                            # 示例：deepseek-chat（该提供商下的模型 id）
     subagent:

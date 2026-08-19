@@ -74,7 +74,7 @@ export const zh = {
   /** Approval feature card heading. */
   approveTitle: '审批模型',
   /** Approval feature card explanation. */
-  approveDescription: '联动 dsh-command-approve-for-me 插件：安装该插件并启用 review 模式后，其审批审查调用改由这里选择的独立模型执行，不再继承会话主模型。',
+  approveDescription: '联动 @dsh-plugin/dsh-approve-for-me 插件：安装该插件并启用 review 模式后，其审批审查调用改由这里选择的独立模型执行，不再继承会话主模型。',
   /** Approval feature switch label. */
   approveToggle: '启用审批模型路由',
   /** Approval picker label. */
@@ -82,7 +82,7 @@ export const zh = {
   /** Approval route explanation. */
   approveUsage: '开启但没有完整 provider/model route 时保持原行为（审查模型继续继承会话或使用插件自身的 reviewProvider/reviewModel 配置）。建议选择便宜快速的模型；审查裁决只用于审批，不写入会话历史。',
   /** Approval card notice when the approve-for-me plugin is not installed. */
-  approveNotInstalled: '未检测到 dsh-command-approve-for-me 插件：请先安装并启用该插件（review 模式），此设置才会生效；当前保存此配置不会产生任何影响。',
+  approveNotInstalled: '未检测到 @dsh-plugin/dsh-approve-for-me 插件：请先安装并启用该插件（review 模式），此设置才会生效；当前保存此配置不会产生任何影响。',
   /** Subagent routing card. */
   subagentTitle: '子代理模型',
   subagentDescription: '为委派出去的子代理设置独立模型路由。',
@@ -153,11 +153,11 @@ export const en: Record<AuxiliaryKey, string> = {
   compactPickerLabel: 'Compaction model',
   compactUsage: 'An enabled feature without a complete provider/model route keeps the existing pass-through behavior. `engine` has no third model picker; when enabled, the compression engine reuses this compact route.',
   approveTitle: 'Approval model',
-  approveDescription: 'Hookup for the dsh-command-approve-for-me plugin: once that plugin is installed and review mode is active, its approval reviews run on the dedicated model selected here instead of inheriting the session\'s main model.',
+  approveDescription: 'Hookup for the @dsh-plugin/dsh-approve-for-me plugin: once that plugin is installed and review mode is active, its approval reviews run on the dedicated model selected here instead of inheriting the session\'s main model.',
   approveToggle: 'Enable approval-model routing',
   approvePickerLabel: 'Approval model',
   approveUsage: 'An enabled feature without a complete provider/model route keeps the original behavior (the reviewer keeps inheriting the session or the plugin\'s own reviewProvider/reviewModel config). Prefer a cheap, fast model; the review verdict only decides approval and never enters the session history.',
-  approveNotInstalled: 'The dsh-command-approve-for-me plugin was not detected: install and enable it (review mode) first — until then, saving this configuration has no effect.',
+  approveNotInstalled: 'The @dsh-plugin/dsh-approve-for-me plugin was not detected: install and enable it (review mode) first — until then, saving this configuration has no effect.',
   subagentTitle: 'Subagent model',
   subagentDescription: 'Set a dedicated model route for delegated child agents.',
   subagentToggle: 'Enable subagent model',

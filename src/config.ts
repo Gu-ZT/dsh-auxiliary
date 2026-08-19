@@ -65,7 +65,7 @@ const Config = z.object({
     model: z.string()
   }),
   approve: z.object({
-    enabled: z.boolean().default(false).description('When dsh-command-approve-for-me is installed, route its review-mode approval calls to a dedicated model.'),
+    enabled: z.boolean().default(false).description('When @dsh-plugin/dsh-approve-for-me is installed, route its review-mode approval calls to a dedicated model.'),
     provider: z.string(),
     model: z.string()
   }),
@@ -122,7 +122,7 @@ export interface ResolvedCompactConfig {
   readonly model: string;
 }
 
-/** Resolved approval-reviewer routing policy (dsh-command-approve-for-me hookup). */
+/** Resolved approval-reviewer routing policy (@dsh-plugin/dsh-approve-for-me hookup). */
 export interface ResolvedApproveConfig {
   readonly enabled: boolean;
   readonly provider: string | undefined;

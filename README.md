@@ -30,7 +30,7 @@ English | [简体中文](README.zh_CN.md)
 | Image handoff | Chat images survive a text-only main model via `describe_image` | Vision understanding card → **Image handoff** |
 | Context compaction | Summaries (`purpose: 'compaction'`) use a dedicated model | Auxiliary Models → **Context compaction** |
 | Compression engine *(optional)* | Replaces the compaction backend with an explicit compression prompt | `engine.enabled` in the config |
-| Approval model | Reviews from dsh-command-approve-for-me use a dedicated model | Auxiliary Models → **Approval model** |
+| Approval model | Reviews from @dsh-plugin/dsh-approve-for-me use a dedicated model | Auxiliary Models → **Approval model** |
 | Subagent model | Delegated child agents use a dedicated model | Auxiliary Models → **Subagent model** |
 | Title model | Session titles (`purpose: 'session-title'`) use a dedicated model | Auxiliary Models → **Title model** |
 | Image-generation model | `generate_image` tool: create images through an OpenAI-compatible images API | Auxiliary Models → **Image-generation model** |
@@ -107,9 +107,9 @@ The listener is always installed and is a pure pass-through until a complete rou
 
 **Compression engine** *(optional)*: `engine.enabled: true` replaces the stock compaction backend with a `BasicCompactionEngine` subclass that drives summarization with an explicit context-compression instruction (see `engine.compressPrompt`). It reuses the compact route and adds no third model route. It is mutually exclusive with `@deepseek-ai/dsh-compaction-basic` — the plugin detects the conflict and skips the engine with a warning.
 
-### Approval model (dsh-command-approve-for-me hookup)
+### Approval model (@dsh-plugin/dsh-approve-for-me hookup)
 
-[dsh-command-approve-for-me](https://github.com/ZhuRuoLing/dsh-command-approve-for-me) adds codex-style auto-approval; in `review` mode a lightweight reviewer model decides each approval prompt. The **Approval model** card gives the review a dedicated model:
+[@dsh-plugin/dsh-approve-for-me](https://github.com/dsh-plugins/dsh-approve-for-me) adds codex-style auto-approval; in `review` mode a lightweight reviewer model decides each approval prompt. The **Approval model** card gives the review a dedicated model:
 
 ```yaml
 approve:
@@ -248,7 +248,7 @@ All fields are optional; defaults are shown.
       provider: ""                         # e.g. deepseek-official (a registered provider route id)
       model: ""                            # e.g. deepseek-chat (a model id on that provider)
     approve:
-      enabled: false                       # give dsh-command-approve-for-me's reviews a dedicated model
+      enabled: false                       # give @dsh-plugin/dsh-approve-for-me's reviews a dedicated model
       provider: ""                         # e.g. deepseek-official (a registered provider route id)
       model: ""                            # e.g. deepseek-chat (a model id on that provider)
     subagent:

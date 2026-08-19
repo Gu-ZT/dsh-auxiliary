@@ -1,5 +1,5 @@
 /**
- * Approval-reviewer routing: a hookup for dsh-command-approve-for-me.
+ * Approval-reviewer routing: a hookup for @dsh-plugin/dsh-approve-for-me.
  *
  * When the approve-for-me plugin is installed and its `mode: review` is active,
  * it asks a reviewer model to decide each approval prompt. By default the
